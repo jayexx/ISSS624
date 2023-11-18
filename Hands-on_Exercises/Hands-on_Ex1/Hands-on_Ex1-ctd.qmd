@@ -1,5 +1,5 @@
 ---
-title: "Hands-on_Ex1-ctd"
+title: "Hands-on_Ex1-ctd: Choropleth Mapping with R"
 editor: visual
 ---
 
