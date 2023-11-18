@@ -1,5 +1,4 @@
 ---
-use---
 title: "ISSS624"
 ---
 
@@ -7,7 +6,7 @@ Welcome to ISSS624 Geospatial Analytics Applications!
 
 In this webpage, I am going to share with you my learning journey of geospatial analytics.
 
-This is a Quarto website.
+This is a Quarto website
 
 To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
 
