@@ -5,11 +5,11 @@ editor: visual
 
 ## Overview
 
-In this hands-on exercise, i learn how to import and wrangle geospatil data using appropriate R packages.
+In this hands-on exercise, i learn how to import and wrangle geospatial data using appropriate R packages.
 
 ## Getting Started
 
-The code chunk below installs and loads sf and tidyverse packages into R environment
+The code chunk below installs and loads [sf](https://cran.r-project.org/web/packages/sf/sf.pdf) and tidyverse packages into R environment
 
 ```{r}
 pacman:: p_load(tmap, sf, tidyverse)
