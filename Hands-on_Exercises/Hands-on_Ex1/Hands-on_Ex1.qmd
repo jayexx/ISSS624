@@ -17,6 +17,8 @@ pacman:: p_load(dplyr, tmap, sf, tidyverse, ggplot2)
 
 ## Importing Geospatial Data
 
+Data set consists of: - Master Plan 2014 Subzone Boundary (Web) from data.gov.sg - Pre-Schools Location from data.gov.sg - Cycling Path from LTADataMall - Latest version of Singapore Airbnb listing data from Inside Airbnb
+
 ### Importing polygon feature data
 
 ```{r}
