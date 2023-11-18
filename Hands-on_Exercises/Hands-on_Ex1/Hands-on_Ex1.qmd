@@ -5,7 +5,7 @@ editor: visual
 
 ## Overview
 
-In this hands-on exercise, i learn how to import and wrangle geospatial data using appropriate R packages.
+In this hands-on exercise, I learn how to import and wrangle geospatial data using appropriate R packages.
 
 ## Getting Started
 
@@ -161,12 +161,12 @@ Most number of pre-schools
 top_n(mpsz3414, 1, `PreSch Count`)
 ```
 
-DIY: Density of Pre-schools per KM^2:
+DIY: Density of Pre-schools per KM\^2:
 
 ```{r}
 mpsz3414$`PreSch Density1`<- mpsz3414$`PreSch Count`/mpsz3414$`SHAPE_Area` * 1000000
-summary(mpsz3414$`PreSch Density`)
-top_n(mpsz3414, 3, `PreSch Density`)
+summary(mpsz3414$`PreSch Density1`)
+top_n(mpsz3414, 3, `PreSch Density1`)
 ```
 
 Solution:
@@ -175,7 +175,6 @@ Solution:
 mpsz3414$Area <- mpsz3414 %>%
   st_area()
 ```
-
 
 ```{r}
 mpsz3414 <- mpsz3414 %>%
@@ -214,8 +213,3 @@ ggplot(data=mpsz3414,
       x = "Pre-school density (per km sq)",
       y = "Pre-school count")
 ```
-
-
-
-
-
