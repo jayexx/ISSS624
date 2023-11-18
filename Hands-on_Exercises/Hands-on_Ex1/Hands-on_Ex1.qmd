@@ -12,7 +12,7 @@ In this hands-on exercise, i learn how to import and wrangle geospatial data usi
 The code chunk below installs and loads [sf](https://cran.r-project.org/web/packages/sf/sf.pdf) and tidyverse packages into R environment
 
 ```{r}
-pacman:: p_load(tmap, sf, tidyverse)
+pacman:: p_load(dplyr, tmap, sf, tidyverse, ggplot2)
 ```
 
 ## Importing Geospatial Data
@@ -37,12 +37,185 @@ preschool = st_read("data/geospatial/preschoolslocation.kml")
 
 ## Checking Content of a Simple Feature Data Frame
 
-### Working with st_geometry()
-
+### Working with *st_geometry()*
 
 ```{r}
 st_geometry(mpsz)
 ```
+
+### Working with *glimpse*
+
+```{r}
+glimpse(mpsz)
+```
+
+### Working with *head()*
+
+```{r}
+head(mpsz, n=5)
+```
+
+## Plotting the Geospatial Data
+
+```{r}
+plot(mpsz)
+```
+
+```{r}
+plot(st_geometry(mpsz))
+```
+
+```{r}
+plot(mpsz["PLN_AREA_N"])
+```
+
+## Working with Projection
+
+###Assigning EPSG code to a simple feature data frame
+
+```{r}
+st_crs(mpsz)
+```
+
+The following code chunks to correct the EPSG code for svy21 from 9001 to 3414, and review again.
+
+```{r}
+mpsz3414 <- st_set_crs(mpsz, 3414)
+```
+
+```{r}
+st_crs(mpsz3414)
+```
+
+### Transforming the projection of preschool from wgs84 to svy21
+
+The code chunk transforms from geographic system to projected coordinate system.
+
+```{r}
+preschool3414 <- st_transform(preschool, 
+                              crs = 3414)
+preschool3414
+```
+
+## Importing and Converting Aspatial Data
+
+### Importing aspatial data
+
+```{r}
+listings <- read_csv("data/aspatial/listings1.csv", show_col_types = FALSE)
+```
+
+```{r}
+list(listings)
+```
+
+### Creating a simple feature data frame from aspatial data frame
+
+```{r}
+listings_sf <- st_as_sf(listings, 
+                       coords = c("longitude", "latitude"),
+                       crs=4326) %>%
+  st_transform(crs = 3414)
+```
+
+```{r}
+glimpse(listings_sf)
+```
+
+## Geoprocessing with sf package
+
+### Buffering
+
+The following code chunks derives the area bounded by 5m buffers around cycling path
+
+```{r}
+buffer_cycling <- st_buffer(cyclingpath, 
+                               dist=5, nQuadSegs = 30)
+```
+
+```{r}
+buffer_cycling$AREA <- st_area(buffer_cycling)
+```
+
+```{r}
+sum(buffer_cycling$AREA)
+```
+
+### Point-in-polygon count
+
+The following code chunk identifies pre-schools located inside each Planning Subzone (using st_intersects()) and calculate numbers of pre-schools that fall inside each planning subzone (using length()of Base R).
+
+```{r}
+mpsz3414$`PreSch Count`<- lengths(st_intersects(mpsz3414, preschool3414))
+```
+
+Summary stats:
+
+```{r}
+summary(mpsz3414$`PreSch Count`)
+```
+
+Most number of pre-schools
+
+```{r}
+top_n(mpsz3414, 1, `PreSch Count`)
+```
+
+DIY: Density of Pre-schools per KM^2:
+
+```{r}
+mpsz3414$`PreSch Density1`<- mpsz3414$`PreSch Count`/mpsz3414$`SHAPE_Area` * 1000000
+summary(mpsz3414$`PreSch Density`)
+top_n(mpsz3414, 3, `PreSch Density`)
+```
+
+Solution:
+
+```{r}
+mpsz3414$Area <- mpsz3414 %>%
+  st_area()
+```
+
+
+```{r}
+mpsz3414 <- mpsz3414 %>%
+  mutate(`PreSch Density` = `PreSch Count`/Area * 1000000)
+```
+
+## Exploratory Data Analysis (EDA)
+
+```{r}
+hist(mpsz3414$`PreSch Density`)
+```
+
+Alternatively, using ggplot to better meet publication quality in the the code chunk as follows.
+
+```{r}
+ggplot(data=mpsz3414, 
+       aes(x= as.numeric(`PreSch Density`)))+
+  geom_histogram(bins=20, 
+                 color="black", 
+                 fill="light blue") +
+  labs(title = "Are pre-school even distributed in Singapore?",
+       subtitle= "There are many planning sub-zones with a single pre-school, on the other hand, \nthere are two planning sub-zones with at least 20 pre-schools",
+      x = "Pre-school density (per km sq)",
+      y = "Frequency")
+```
+
+```{r}
+ggplot(data=mpsz3414, 
+       aes(y = `PreSch Count`, 
+           x= as.numeric(`PreSch Density`)))+
+  geom_point(color="black", 
+             fill="light blue") +
+  xlim(0, 40) +
+  ylim(0, 40) +
+  labs(title = "",
+      x = "Pre-school density (per km sq)",
+      y = "Pre-school count")
+```
+
+
 
 
 
