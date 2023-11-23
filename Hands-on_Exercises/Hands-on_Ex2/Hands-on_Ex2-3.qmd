@@ -1,0 +1,43 @@
+---
+title: "Hands-on_Ex2-3"
+author: "J X Low"
+---
+
+## Overview
+
+In this hands-on exercise, I learn how to compute spatial weights in R, using **sf** (*for import*), **readr** (*for import*), **dplyr** (*for relational join*), and **spdep** (*for calculating spatially lagged var*) packages.
+
+## Getting Started
+
+The code chunk below installs and loads [spdep](https://cran.r-project.org/web/packages/spdep/spdep.pdf) [sf](https://cran.r-project.org/web/packages/sf/sf.pdf), [tmap](https://cran.r-project.org/web/packages/tmap/tmap.pdf) and tidyverse packages into R environment
+
+```{r}
+pacman:: p_load(dplyr, readr, tmap, sf, tidyverse, spdep, knitr)
+```
+
+## Importing Data
+
+Raw data files were obtained for Hunan from e-learn.
+
+### Import shapefile into r environment
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+### Importing Attribute Data (csv file)
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv", show_col_types = FALSE)
+```
+
+### Data Preparation (relational join)
+
+Update the attribute table of Hunan's Spatial Polygons DataFrame with the attribute fields of hunan2012 DataFrame by using left_join() of dplyr package, with the following code chunk
+
+```{R}
+hunan <- left_join(hunan,hunan2012)%>%
+  select(1:4, 7, 15)
+```
+
