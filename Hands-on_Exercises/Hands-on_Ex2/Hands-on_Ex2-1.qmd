@@ -1,0 +1,168 @@
+---
+title: "Hands-on Exercise 2: Spatial Weights and Applications"
+author: "J X Low"
+---
+
+## Overview
+
+In this hands-on exercise, I learn how to compute spatial weights in R, using **sf** (*for import*), **readr** (*for import*), **dplyr** (*for relational join*), and **spdep** (*for calculating spatially lagged var*) packages.
+
+## Getting Started
+
+The code chunk below installs and loads [spdep](https://cran.r-project.org/web/packages/spdep/spdep.pdf) [sf](https://cran.r-project.org/web/packages/sf/sf.pdf), [tmap](https://cran.r-project.org/web/packages/tmap/tmap.pdf) and tidyverse packages into R environment
+
+```{r}
+pacman:: p_load(dplyr, readr, tmap, sf, tidyverse, spdep, knitr)
+```
+
+## Importing Data
+
+Raw data files were obtained for Hunan from e-learn.
+
+### Import shapefile into r environment
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+### Importing Attribute Data (csv file)
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv", show_col_types = FALSE)
+```
+
+### Data Preparation (relational join)
+
+Update the attribute table of Hunan’s Spatial Polygons DataFrame with the attribute fields of hunan2012 DataFrame by using left_join() of dplyr package, with the following code chunk
+
+```{R}
+hunan <- left_join(hunan,hunan2012)%>%
+  select(1:4, 7, 15)
+```
+
+## Visualising Regional Development Indicator
+
+Prepare base map using qtm() with the following code chunk
+
+```{R}
+basemap <- tm_shape(hunan) +
+  tm_polygons() +
+  tm_text("NAME_3", size=0.5)
+
+gdppc <- qtm(hunan, "GDPPC")
+tmap_arrange(basemap, gdppc, asp=1, ncol=2)
+```
+
+## Computing Contiguity Spatial Weights
+
+### Computing (QUEEN) contiguity based neighbours
+
+```{R}
+wm_q <- poly2nb(hunan, queen=TRUE)
+summary(wm_q)
+```
+Summary report above shows 88 area units in Hunan, with the most connected area unit having 11 neighbours, and only 2 area units with only 1 neighbour.
+
+See the list of neighbours of the Polygon ID = 1 with the following code chunk
+
+```{R}
+wm_q[[1]]
+```
+
+Retrieve the county name based on Polygon ID, for ID = 1 with the following code chunk
+
+```{r}
+hunan$County[1]
+```
+
+Retrieve the name of the 5 neighbouring counties with the following code chunk
+
+```{R}
+hunan$NAME_3[c(2,3,4,57,85)]
+```
+
+Retrieve the GDPPC of the 5 counties based on the Queen's method with the following code chunk
+
+```{R}
+nb1 <- wm_q[[1]]
+nb1 <- hunan$GDPPC[nb1]
+nb1
+```
+
+Display the complete weight matrix using str() with the following code chunk
+
+```{R}
+str(wm_q)
+```
+
+### Creating (ROOK) contiguity based neighbours
+
+```{R}
+wm_r <- poly2nb(hunan, queen=FALSE)
+summary(wm_r)
+```
+Summary report above shows 88 area units in Hunan, with the most connected area unit having 10 neighbours, and only 2 area units with only 1 neighbour.
+
+### Visualising contiguity weights
+
+Connectivity graph takes a pt and displays a line to each neighboring pt. Working with polygons, need to get pts to associate with each polygon before making connectivity graph. Most typical method for this: Polygon Centroids. Calculate these in the sf package before moving onto the graphs.
+
+Getting Latitude and Longitude of Polygon Centroids is more complicated than just running st_centroid on the sf object: us.bound. Need the coordinates in a separate data frame. To do this, use a mapping function. Mapping function applies a given function to each element of a vector and returns a vector of the same length. Input vector will be the geometry column of us.bound. Function will be st_centroid. Use map_dbl variation of map from the purrr package. 
+
+*(For more documentation, check out map documentation)*
+
+To get longitude values, map the st_centroid function over the geometry column of us.bound and access the longitude value through double bracket notation [[]] and 1, which obtains only the longitude, which is the first value in each centroid, with the following code chunk.
+
+```{R}
+longitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[1]])
+```
+
+Similar with latitude but using the second value per each centroid with [[2]], with the following code chunk.
+
+```{R}
+latitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[2]])
+```
+
+Use cbind to put longitude and latitude into the same object with the following code chunk.
+
+```{R}
+coords <- cbind(longitude, latitude)
+```
+
+Use head() to check the formatting for 1st few observations with the following code chunk.
+
+```{R}
+head(coords)
+```
+
+#### Plotting Queen contiguity based neighbours map
+
+```{R}
+plot(hunan$geometry, border="lightgrey")
+plot(wm_q, coords, pch = 19, cex = 0.6, add = TRUE, col= "red")
+```
+
+#### Plotting Rook contiguity based neighbours map
+
+```{R}
+plot(hunan$geometry, border="lightgrey")
+plot(wm_q, coords, pch = 19, cex = 0.6, add = TRUE, col= "red")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
