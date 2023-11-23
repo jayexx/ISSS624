@@ -9,6 +9,15 @@ In this hands-on exercise, I learn how to compute spatial weights in R, using **
 
 ## Getting Started
 
+### Datasets
+
+Data set consists of:
+
+- Hunan province administrative boundary layer at county level. This is a geospatial data set in ESRI shapefile format.
+- Hunan_2012.csv: This csv file contains selected Hunan’s local development indicators in 2012.
+
+### Loading packages
+
 The code chunk below installs and loads [spdep](https://cran.r-project.org/web/packages/spdep/spdep.pdf) [sf](https://cran.r-project.org/web/packages/sf/sf.pdf), [tmap](https://cran.r-project.org/web/packages/tmap/tmap.pdf) and tidyverse packages into R environment
 
 ```{r}

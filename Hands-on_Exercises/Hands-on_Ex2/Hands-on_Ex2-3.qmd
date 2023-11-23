@@ -9,6 +9,21 @@ In this hands-on exercise, I learn how to compute spatial weights in R, using **
 
 ## Getting Started
 
+### The analytical question
+
+In spatial policy, one of the main development objective of the local government and planners is to ensure equal distribution of development in the province. Our task in this study, hence, is to apply appropriate spatial statistical methods to discover if development are even distributed geographically. If the answer is No. Then, our next question will be “is there sign of spatial clustering?”. And, if the answer for this question is yes, then our next question will be “where are these clusters?”
+
+In this case study, we are interested to examine the spatial pattern of a selected development indicator (i.e. GDP per capita) of [Hunan Provice, People Republic of China](https://en.wikipedia.org/wiki/Hunan).
+
+### Datasets
+
+Data set consists of:
+
+- Hunan province administrative boundary layer at county level. This is a geospatial data set in ESRI shapefile format.
+- Hunan_2012.csv: This csv file contains selected Hunan’s local development indicators in 2012.
+
+### Loading packages
+
 The code chunk below installs and loads [spdep](https://cran.r-project.org/web/packages/spdep/spdep.pdf) [sf](https://cran.r-project.org/web/packages/sf/sf.pdf), [tmap](https://cran.r-project.org/web/packages/tmap/tmap.pdf) and tidyverse packages into R environment
 
 ```{r}
@@ -40,4 +55,12 @@ Update the attribute table of Hunan's Spatial Polygons DataFrame with the attrib
 hunan <- left_join(hunan,hunan2012)%>%
   select(1:4, 7, 15)
 ```
+
+
+
+
+
+
+
+
 

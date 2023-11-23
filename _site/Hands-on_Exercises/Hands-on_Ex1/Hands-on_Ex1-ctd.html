@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>ISSS624 - Hands-on_Ex1-ctd</title>
+<title>ISSS624 - Hands-on_Ex1-ctd: Choropleth Mapping with R</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -127,6 +127,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="dropdown-item" href="../../Hands-on_Exercises/Hands-on_Ex1/Hands-on_Ex1-ctd.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 1 Continued</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on_Exercises/Hands-on_Ex2/Hands-on_Ex2-1.html" rel="" target="">
+ <span class="dropdown-text">Hands-on Exercise 2-1</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on_Exercises/Hands-on_Ex2/Hands-on_Ex2-2.html" rel="" target="">
+ <span class="dropdown-text">Hands-on Exercise 2-2</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="../../Hands-on_Exercises/Hands-on_Ex2/Hands-on_Ex2-3.html" rel="" target="">
+ <span class="dropdown-text">Hands-on Exercise 2-3</span></a>
+  </li>  
     </ul>
   </li>
   <li class="nav-item dropdown ">
@@ -181,7 +193,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#colour-scheme" id="toc-colour-scheme" class="nav-link" data-scroll-target="#colour-scheme">Colour Scheme</a></li>
   <li><a href="#map-layouts" id="toc-map-layouts" class="nav-link" data-scroll-target="#map-layouts">Map Layouts</a></li>
   <li><a href="#drawing-small-multiple-choropleth-maps" id="toc-drawing-small-multiple-choropleth-maps" class="nav-link" data-scroll-target="#drawing-small-multiple-choropleth-maps">Drawing Small Multiple Choropleth Maps</a></li>
-  <li><a href="#mappping-spatial-object-meeting-a-selection-criterion" id="toc-mappping-spatial-object-meeting-a-selection-criterion" class="nav-link" data-scroll-target="#mappping-spatial-object-meeting-a-selection-criterion">Mappping Spatial Object Meeting a Selection Criterion</a></li>
+  <li><a href="#mapping-spatial-object-meeting-a-selection-criterion" id="toc-mapping-spatial-object-meeting-a-selection-criterion" class="nav-link" data-scroll-target="#mapping-spatial-object-meeting-a-selection-criterion">Mapping Spatial Object Meeting a Selection Criterion</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -191,7 +203,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Hands-on_Ex1-ctd</h1>
+<h1 class="title">Hands-on_Ex1-ctd: Choropleth Mapping with R</h1>
 </div>
 
 
@@ -700,8 +712,8 @@ therefore deprecated</code></pre>
 </div>
 </section>
 </section>
-<section id="mappping-spatial-object-meeting-a-selection-criterion" class="level3">
-<h3 class="anchored" data-anchor-id="mappping-spatial-object-meeting-a-selection-criterion">Mappping Spatial Object Meeting a Selection Criterion</h3>
+<section id="mapping-spatial-object-meeting-a-selection-criterion" class="level3">
+<h3 class="anchored" data-anchor-id="mapping-spatial-object-meeting-a-selection-criterion">Mapping Spatial Object Meeting a Selection Criterion</h3>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(mpsz_pop2020[mpsz_pop2020<span class="sc">$</span>REGION_N<span class="sc">==</span><span class="st">"CENTRAL REGION"</span>, ])<span class="sc">+</span></span>
 <span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"DEPENDENCY"</span>, </span>

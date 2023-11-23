@@ -17,7 +17,9 @@ pacman:: p_load(dplyr, tmap, sf, tidyverse, ggplot2)
 
 ## Importing Data
 
-Data set consists of: - Master Plan 2014 Subzone Boundary (Web) from data.gov.sg - Singapore Residents by Planning Area / Subzone, Age Group, Sex and Type of Dwelling, June 2011-2020 from Department of Statistics, Singapore
+Data set consists of: 
+- Master Plan 2014 Subzone Boundary (Web) from data.gov.sg 
+- Singapore Residents by Planning Area / Subzone, Age Group, Sex and Type of Dwelling, June 2011-2020 from Department of Statistics, Singapore
 
 ### Importing Geospatial Data
 
