@@ -1,0 +1,210 @@
+---
+title: "In-class_Ex2"
+author: "J X Low"
+---
+
+## Overview
+
+In this in-class exercise, I learn how to use an alternative package, sfdep, to explore the methods used in Hands-on Ex2 on - Spatial Weights using Queen's method - Local measure of Moran's I - Computing Gi\* for time series cube - Performing EHSA.
+
+## Getting Started
+
+### Installing & Loading packages
+
+The code chunk below installs and loads [spdep](https://cran.r-project.org/web/packages/spdep/spdep.pdf) [sf](https://cran.r-project.org/web/packages/sf/sf.pdf), [tmap](https://cran.r-project.org/web/packages/tmap/tmap.pdf), knitr and tidyverse packages into R environment
+
+```{r}
+pacman::p_load(dplyr, readr, tmap, sf, tidyverse, spdep, knitr, sfdep, plotly, zoo, Kendall)
+```
+
+## The Data
+
+Raw data files were obtained for Hunan from e-learn. Data set consists of:
+
+-   Hunan province administrative boundary layer at county level. This is a geospatial data set in ESRI shapefile format.
+-   Hunan_2012.csv: This csv file contains selected Hunan's local development indicators in 2012.
+
+### Import shapefile into r environment
+
+```{r}
+hunan <- st_read(dsn = "data/geospatial", 
+                 layer = "Hunan")
+```
+
+### Importing Attribute Data (csv file)
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv", show_col_types = FALSE)
+```
+
+```{r}
+GDPPC <- read_csv("data/aspatial/Hunan_GDPPC.csv", show_col_types = FALSE)
+```
+
+### Combining data frame using left join
+
+Update the attribute table of Hunan's Spatial Polygons DataFrame with the attribute fields of hunan2012 Dataframe by using left_join() of dplyr package, with the following code chunk
+
+:::
+
+```{R}
+#| code-fold: true
+#| code-summary: "Show the code"
+hunan_GDPPC <- left_join(hunan, hunan2012)%>%
+  select(1:4, 7, 15)
+```
+:::
+
+### Plotting the choropleth
+
+Prepare a basemap and a choropleth map showing the distribution of GDPPC 2012 by using qtm() of tmap package
+
+```{R}
+equal <- tm_shape(hunan_GDPPC) +
+  tm_fill("GDPPC",
+          n = 5,
+          style = "equal") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Equal interval classification")
+
+quantile <- tm_shape(hunan_GDPPC) +
+  tm_fill("GDPPC",
+          n = 5,
+          style = "quantile") +
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "Equal quantile classification")
+
+tmap_arrange(equal, 
+             quantile, 
+             asp=1, 
+             ncol=2)
+```
+
+## Deriving Contiguity Spatial Weights: Queen's method
+
+Use st_weights() of SDFEP package with the queen method to derive the contiguity weights in the following code.
+
+```{R}
+wm_q <- hunan_GDPPC %>%
+  mutate(nb = st_contiguity(geometry),
+         wt = st_weights(nb,
+                         style = "W"),
+         .before = 1)
+```
+
+In above, st_weights() has 3 arguments:
+
+-   nb: A neighbor list object as created using st_neighbors().
+-   style: Default "W" for row standardized weights. This value can also be "B", "C", "U", "minmax", and "S".
+    -   B is the basic binary coding, W is row standardised (sums over all links to n)
+    -   C is globally standardised (sums over all links to n)
+    -   U is equal to C divided by the number of neighbours (sums over all links to unity)
+    -   S is the variance-stabilizing coding scheme (sums over all links to n).
+-   allow_zero: If TRUE, assigns zero as lagged value to zone without neighbors.
+
+```{R}
+wm_q
+```
+
+## Computing local Moran's I
+
+Compute Local Moran's I of GDPPC at county level by using local_moran() of sfdep package
+
+```{R}
+lisa <- wm_q %>%
+  mutate(local_moran = local_moran(
+    GDPPC, nb, wt, nsim = 99),
+      .before = 1) %>%
+  unnest(local_moran)
+```
+
+The output of local_moran() is a sf data.frame containing the columns ii, eii, var_ii, z_ii, p_ii, p_ii_sim, and p_folded_sim.
+
+## Creating a Time Series Cube
+
+Use spacetime() of sfdep to create an spacetime cube in the following code.
+
+```{R}
+GDPPC_st <- spacetime(GDPPC, hunan,
+                      .loc_col = "County",
+                      .time_col = "Year")
+```
+
+### Computing Gi\*
+
+#### Deriving the spatial weights
+
+Identify neighbors and to derive inverse distance weights using the following code.
+
+```{R}
+GDPPC_nb <- GDPPC_st %>%
+  activate("geometry")%>%
+  mutate(nb = include_self(st_contiguity(geometry)),
+         wt = st_inverse_distance(nb, geometry,
+                                   scale = 1,
+                                   alpha = 1),
+         .before = 1) %>%
+  set_nbs("nb") %>%
+  set_wts("wt")
+```
+
+### Computing Gi\*
+
+Use new columns to manually calculate the local Gi\* for each location. Group by Year and use local_gstar_perm() of sfdep package. After which, use unnest() to unnest gi_star column of the newly created gi_starts Dataframe.
+
+```{R}
+gi_stars <- GDPPC_nb %>%
+  group_by(Year) %>%
+  mutate(gi_star = local_gstar_perm(
+    GDPPC, nb, wt)) %>%
+  tidyr::unnest(gi_star)
+```
+
+## Mann-Kendall Test
+
+Evaluate trend using Mann-Kendall Test for Changsha as follows.
+
+```{R}
+cbg <- gi_stars %>% 
+  ungroup() %>% 
+  filter(County == "Changsha") |> 
+  select(County, Year, gi_star)
+```
+
+Using ggplot2
+
+```{R}
+ggplot(data = cbg, 
+       aes(x = Year, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
+```
+
+Using plotly to get interactive version
+
+```{R}
+p <- ggplot(data = cbg, 
+       aes(x = Year, 
+           y = gi_star)) +
+  geom_line() +
+  theme_light()
+
+ggplotly(p)
+```
+
+### Performing Emerging Hotspot Analysis
+
+Perform EHSA analysis by using emerging_hotspot_analysis() of sfdep package. It takes a spacetime object x (i.e. GDPPC_st), and the quoted name of the variable of interest (i.e. GDPPC) for .var argument. The k argument is used to specify the number of time lags which is set to 1 by default. Lastly, nsim map numbers of simulation to be performed.
+
+```{R}
+ehsa <- emerging_hotspot_analysis(
+  x = GDPPC_st,
+  .var = "GDPPC",
+  k = 1, 
+  nsim = 99
+)
+```
+
+
+

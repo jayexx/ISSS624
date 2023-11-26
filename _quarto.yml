@@ -21,6 +21,8 @@ website:
         menu: 
           - text: In-class_Exercise 1
             href: In-class_Exercises/In-class_Ex1/In-class_Ex1.qmd
+          - text: In-class_Exercise 2
+            href: In-class_Exercises/In-class_Ex2/In-class_Ex2.qmd
     right:
       - href: index.qmd
         text: Home
