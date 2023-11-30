@@ -1,14 +1,11 @@
 ---
-title: "In-class_Ex1: My First Date with Geospatial Data Analytics"
-date: "18 November 2023"
-date-modified: "last-modified"
-format: html
-execute: 
-  echo: true
-  eval: true
-  warning: false
-editor: visual
+title: "Take-home_Ex1"
+author: "LOW JI XIONG"
 ---
+
+## Overview
+
+
 
 ## Getting Started
 
@@ -18,20 +15,23 @@ The code chunk below load the following packages:
 -   sf for geospatial data handling
 -   tidyverse for non-spatial data handling.
 -   knitr for creating html table
+-   spdep for
+-   sfdep for
+-   plotly for interactive plots
 
 ```{r}
-pacman::p_load(tmap, sf, tidyverse, knitr)
+pacman::p_load(tmap, sf, tidyverse, knitr, spdep, sfdep, plotly, zoo, Kendall)
 ```
 
-## Preparing the Flow Data
+## Importing  & Preparing the Data
 
-## Importing the OD data
+### Importing the aspatial data
 
-Firstly, we will import the *Passenger Volume by Origin Destination Bus Stops* data set downloaded from LTA DataMall by using 'read_csv()' of \*\*readr\* package.
+Firstly, the *Passenger Volume by Origin Destination Bus Stops* data set for the month of October 2023, from LTA DataMall, will be imported by using 'read_csv()' of \*\*readr\* package.
 
 ```{r}
 #\| eval: false 
-odbus <- read_csv("data/aspatial/origin_destination_bus_202310.csv", show_col_types = FALSE)
+odbus <- read.csv("data/aspatial/origin_destination_bus_202310.csv")
 ```
 
 From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tibble data frame are in numeric data type.
@@ -53,8 +53,70 @@ From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tib
 glimpse(odbus)
 ```
 
+## Importing geospatial data
 
-### Extracting the study data
+Import BusStop layer downloaded from LTA DataMall into RStudio and save it as a sf data frame called busstop.
+
+```{r}
+busstop <- st_read(dsn = "data/geospatial",
+                   layer = "BusStop") %>%
+  st_transform(crs = 3414)
+```
+  
+The structure of busstop sf tibble data frame is as follows.
+
+```{R}
+glimpse(busstop)
+```
+## Converting to Hexagonal grid
+
+Convert to hexagonal grid and filtering out points with Number of Collisions = 0, as follows.
+
+```{R}
+busstop_hxgn_grid = st_make_grid(busstop, c(250, 250), what = "polygons", square = FALSE)
+
+# To sf and add grid ID
+hxgn_grid_sf = st_sf(busstop_hxgn_grid) %>%
+  # add grid ID
+  mutate(grid_id = 1:length(lengths(busstop_hxgn_grid)))
+
+# count number of points in each grid
+# https://gis.stackexchange.com/questions/323698/counting-points-in-polygons-with-sf-package-of-r
+hxgn_grid_sf$n_colli = lengths(st_intersects(hxgn_grid_sf, busstop))
+
+# remove grid without value of 0 (i.e. no points in side that grid)
+hxgn_count = filter(hxgn_grid_sf, n_colli > 0)
+```
+
+Plot the map with hexagonal grid as follows.
+
+```{R}
+tmap_mode("view")
+
+map_hxgn = tm_shape(hxgn_count) +
+  tm_fill(
+    col = "n_colli",
+    palette = "Reds",
+    style = "cont",
+    title = "Number of collisions",
+    id = "grid_id",
+    showNA = FALSE,
+    alpha = 0.6,
+    popup.vars = c(
+      "Number of collisions: " = "n_colli"
+    ),
+    popup.format = list(
+      n_colli = list(format = "f", digits = 0)
+    )
+  ) +
+  tm_borders(col = "grey40", lwd = 0.7)
+
+map_hxgn
+```
+
+## Geovisualisation and Analysis
+
+### Extracting the passenger trips for peak hour time intervals
 
 For the purpose of this exercise, extract commuting flows during the weekday morning peak and label the output tibble data table as origin7_9.
 
@@ -85,40 +147,6 @@ Import file back into R as follows.
 ```{R}
 origin7_9 <- read_rds("data/rds/origin7_9.rds")
 ```
-
-## Importing geospatial data
-
-Import BusStop layer downloaded from LTA DataMall into RStudio and save it as a sf data frame called busstop.
-
-```{r}
-busstop <- st_read(dsn = "data/geospatial",
-                   layer = "BusStop") %>%
-  st_transform(crs = 3414)
-```
-  
-The structure of busstop sf tibble data frame is as follows.
-
-```{R}
-glimpse(busstop)
-```
-
-Import MPSZ-2019 downloaded from eLearn into RStudio and save it as a sf data frame called mpsz.
-
-```{r}
-mpsz <- st_read(dsn = "data/geospatial",
-                   layer = "MPSZ-2019") %>%
-  st_transform(crs = 3414)
-```
-  
-The structure of mpsz sf tibble data frame is as follows.
-
-```{R}
-glimpse(mpsz)
-```
-
-##### Note:
-- st_read() function of sf package is used to import the shapefile into R as sf data frame.
-- st_transform() function of sf package is used to transform the projection to crs 3414.
 
 ## Geospatial Data Wrangling
 
@@ -224,7 +252,5 @@ tm_shape(origintrip_SZ)+
   tm_credits("Source: Planning Sub-zone boundary from URA\n and Passenger trips data from LTA", 
              position = c("left", "bottom"))
 ```
-
-
 
 
