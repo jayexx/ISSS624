@@ -66,7 +66,6 @@ glimpse(odbus)
 For the purpose of this exercise, extract commuting flows during the weekday morning peak and label the output tibble data table as origin7_9.
 
 ```{r}
-#| eval: false
 odbus6_9 <- odbus %>%
   filter(DAY_TYPE == "WEEKDAY") %>%
   filter(TIME_PER_HOUR >= 6 &
@@ -79,7 +78,7 @@ odbus6_9 <- odbus %>%
 The tabulated data points is as follows.
 
 ```{R}
-datatable(odbus6_9)
+head(odbus6_9)
 ```
 
 Convert and save the tible data in rds format as follows.
