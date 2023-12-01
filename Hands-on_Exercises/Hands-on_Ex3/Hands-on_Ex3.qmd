@@ -63,7 +63,7 @@ glimpse(odbus)
 
 ### Extracting the study data
 
-For the purpose of this exercise, extract commuting flows during the weekday morning peak and label the output tibble data table as origin7_9.
+For the purpose of this exercise, extract commuting flows during the weekday morning peak and label the output tibble data table as origin6_9.
 
 ```{r}
 odbus6_9 <- odbus %>%

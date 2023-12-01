@@ -27,7 +27,7 @@ pacman::p_load(tmap, sf, tidyverse, knitr)
 
 ## Importing the OD data
 
-Firstly, we will import the *Passenger Volume by Origin Destination Bus Stops* data set downloaded from LTA DataMall by using 'read_csv()' of \*\*readr\* package.
+Firstly, we will import the *Passenger Volume by Origin Destination Bus Stops* data set downloaded from LTA DataMall by using 'read_csv()' of **readr** package.
 
 ```{r}
 #\| eval: false 
@@ -53,13 +53,11 @@ From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tib
 glimpse(odbus)
 ```
 
-
 ### Extracting the study data
 
 For the purpose of this exercise, extract commuting flows during the weekday morning peak and label the output tibble data table as origin7_9.
 
 ```{r}
-#| eval: false
 origin7_9 <- odbus %>%
   filter(DAY_TYPE == "WEEKDAY") %>%
   filter(TIME_PER_HOUR >= 7 &
@@ -74,7 +72,7 @@ An extract of the top few data points is as follows.
 kable(head(origin7_9))
 ```
 
-Convert and sav the tible data in rds format as follows.
+Convert and save the tible data in rds format as follows.
 
 ```{R}
 write_rds(origin7_9, "data/rds/origin7_9.rds")
@@ -95,7 +93,7 @@ busstop <- st_read(dsn = "data/geospatial",
                    layer = "BusStop") %>%
   st_transform(crs = 3414)
 ```
-  
+
 The structure of busstop sf tibble data frame is as follows.
 
 ```{R}
@@ -109,7 +107,7 @@ mpsz <- st_read(dsn = "data/geospatial",
                    layer = "MPSZ-2019") %>%
   st_transform(crs = 3414)
 ```
-  
+
 The structure of mpsz sf tibble data frame is as follows.
 
 ```{R}
@@ -117,8 +115,9 @@ glimpse(mpsz)
 ```
 
 ##### Note:
-- st_read() function of sf package is used to import the shapefile into R as sf data frame.
-- st_transform() function of sf package is used to transform the projection to crs 3414.
+
+-   st_read() function of sf package is used to import the shapefile into R as sf data frame.
+-   st_transform() function of sf package is used to transform the projection to crs 3414.
 
 ## Geospatial Data Wrangling
 
@@ -133,9 +132,10 @@ busstop_mpsz <- st_intersection(busstop, mpsz) %>%
 ```
 
 ##### Note:
-- st_intersection() is used to perform point and polygon overly and the output will be in point sf object.
-- select() of dplyr package is then use to retain only BUS_STOP_N and SUBZONE_C in the busstop_mpsz sf data frame.
-- 5 bus stops are excluded in the resultant data frame because they are outside of Singapore bpundary.
+
+-   st_intersection() is used to perform point and polygon overly and the output will be in point sf object.
+-   select() of dplyr package is then use to retain only BUS_STOP_N and SUBZONE_C in the busstop_mpsz sf data frame.
+-   5 bus stops are excluded in the resultant data frame because they are outside of Singapore bpundary.
 
 Save the output into rds format as follows.
 
@@ -224,7 +224,3 @@ tm_shape(origintrip_SZ)+
   tm_credits("Source: Planning Sub-zone boundary from URA\n and Passenger trips data from LTA", 
              position = c("left", "bottom"))
 ```
-
-
-
-
