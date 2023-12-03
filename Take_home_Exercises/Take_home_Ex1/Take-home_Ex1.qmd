@@ -595,7 +595,7 @@ The LISA map is plotted with 2 types of outliers (High-Low and Low-High), and tw
 ```{R}
 lisa_sig <- lisa  %>%
   filter(p_ii_sim < 0.05)
-tmap_mode("plot")
+tmap_mode("view")
 tm_shape(lisa) +
   tm_polygons() +
   tm_borders(alpha = 0.5) +
