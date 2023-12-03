@@ -27,10 +27,11 @@ website:
             href: In-class_Exercises/In-class_Ex2/In-class_Ex2.qmd
           - text: In-class_Exercise 3
             href: In-class_Exercises/In-class_Ex3/In-class_Ex3.qmd
-      - text: Take-home Exercises
+      - text: Take-home_Exercises
         menu: 
-          - text: Take-home Exercise 1
-            href: Take-home_Exercises/Take-home_Ex1/Take-home_Ex1.qmd
+          - text: Take-home_Exercise 1
+            href: Take_home_Exercises/Take_home_Ex1/Take-home_Ex1.qmd
+
     right:
       - href: index.qmd
         text: Home
