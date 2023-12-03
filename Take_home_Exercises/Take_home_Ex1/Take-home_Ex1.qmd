@@ -566,7 +566,7 @@ lisa <- wm_ad %>%
 For effective comparison, the Moran I and p-value maps will be plotted next to each other as shown below.
 
 ```{R}
-tmap_mode("plot")
+tmap_mode("view")
 map1 <- tm_shape(lisa) +
   tm_fill("ii") + 
   tm_borders(alpha = 0.5) +
