@@ -351,7 +351,7 @@ Plot the map with hexagonal grid as follows for:
 -   Weekday morning peak
 
 ```{R}
-tmap_mode("view")
+tmap_mode("plot")
 
 tm_shape(wkd6_9_hxgn_grid_sf) +
   tm_fill(
@@ -386,7 +386,7 @@ tm_shape(wkd6_9_hxgn_grid_sf) +
 -   Weekday evening peak
 
 ```{R}
-tmap_mode("view")
+tmap_mode("plot")
 
 tm_shape(wkd17_20_hxgn_grid_sf) +
   tm_fill(
@@ -421,7 +421,7 @@ tm_shape(wkd17_20_hxgn_grid_sf) +
 -   Weekend/holiday morning peak
 
 ```{R}
-tmap_mode("view")
+tmap_mode("plot")
 
 tm_shape(wke11_14_hxgn_grid_sf) +
   tm_fill(
@@ -456,7 +456,7 @@ tm_shape(wke11_14_hxgn_grid_sf) +
 -   Weekend/holiday evening peak
 
 ```{R}
-tmap_mode("view")
+tmap_mode("plot")
 
 tm_shape(wke16_19_hxgn_grid_sf) +
   tm_fill(
@@ -566,7 +566,7 @@ lisa <- wm_ad %>%
 For effective comparison, the Moran I and p-value maps will be plotted next to each other as shown below.
 
 ```{R}
-tmap_mode("view")
+tmap_mode("plot")
 map1 <- tm_shape(lisa) +
   tm_fill("ii") + 
   tm_borders(alpha = 0.5) +
@@ -595,7 +595,7 @@ The LISA map is plotted with 2 types of outliers (High-Low and Low-High), and tw
 ```{R}
 lisa_sig <- lisa  %>%
   filter(p_ii_sim < 0.05)
-tmap_mode("view")
+tmap_mode("plot")
 tm_shape(lisa) +
   tm_polygons() +
   tm_borders(alpha = 0.5) +
