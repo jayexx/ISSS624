@@ -386,7 +386,7 @@ tm_shape(wkd6_9_hxgn_grid_sf) +
 -   Weekday evening peak
 
 ```{R}
-tmap_mode("plot")
+tmap_mode("view")
 
 tm_shape(wkd17_20_hxgn_grid_sf) +
   tm_fill(
@@ -421,7 +421,7 @@ tm_shape(wkd17_20_hxgn_grid_sf) +
 -   Weekend/holiday morning peak
 
 ```{R}
-tmap_mode("plot")
+tmap_mode("view")
 
 tm_shape(wke11_14_hxgn_grid_sf) +
   tm_fill(
