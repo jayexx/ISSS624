@@ -498,7 +498,7 @@ Amongst the bus stops, the highest number of trip origins across the 4 peak peri
 Making a comparison between distribution by Total trips and Average trips reveals whether there isn't a very noticeable difference, and hence the areas with higher passenger trip origins were largely attributed to popular bus stops within the hexagon, rather than the number of bus stops.
 
 
-## Analysis of Local Indicators of Spatial Association (LISA) 
+## Objective (2): Analysis of Local Indicators of Spatial Association (LISA) 
 
 ### Merging Passenger Trips with Geospatial data
 
