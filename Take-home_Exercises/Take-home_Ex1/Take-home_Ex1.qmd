@@ -5,7 +5,9 @@ author: "LOW JI XIONG"
 
 ## Introduction
 
+The success of Singapore's public transport is commonly recognised as 1 of the quintessential indicator of its rapid growth and prosperity since her independence in 1965. It comprises of both public buses as well as mass rapid transport (MRT) trains. While the MRT network has been expanding across the many zones within Singapore, the bus network remains the most option accessible and reliable option amongst the two. 
 
+Thus, the utilisation pattern of buses are of key importance to multiple aspects of Singapore's socio-economic spheres, ranging from areas of work productivity and efficiency, environmental impact, tourism, and even to potential impact to cost of living and real estate development; which underpins the impetus of this exercise to gain a better understanding of the utilisation patterns and characteristics of Singapore's bus stops.
 
 ## Objectives
 
@@ -13,8 +15,6 @@ The key objectives of this exercise are:
 
 -   To perform geovisualisation and analysis of peakhour busstop passenger trips
 -   To perform Analysis of Local Indicators of Spatial Association (LISA) for passenger trips 
-
-
 
 ## Getting Started
 
@@ -24,8 +24,8 @@ The code chunk below load the following packages:
 -   sf for geospatial data handling
 -   tidyverse for non-spatial data handling.
 -   knitr for creating html table
--   spdep for
--   sfdep for
+-   spdep 
+-   sfdep for creating an sf and tidyverse friendly interfaceas well as for introducing new functionality that is not present in spdep
 -   plotly for interactive plots
 
 ```{r}
@@ -489,8 +489,9 @@ tm_shape(wke16_19_hxgn_grid_sf) +
   tm_borders(alpha = 0.5)
 ```
 
+### Spatial patterns revealed by the geovisualisation
 
-
+From the Geovisualisation of the 4 peak periods, it is noted that the number of trips during weekdays is higher than weekends/holidays; while within the same type of days, evening is higher than morning. Amongst the bus stops, the highest number of trips across the 4 peak periods is from the bus interchanges; while by region, the southwestern region of Singapore seems to have the least number of trips across the 4 peak periods.  
 
 
 ## Analysis of Local Indicators of Spatial Association (LISA) 
@@ -503,15 +504,19 @@ Append the merged busstop_hxgn_grid frame onto the complete odbus data frame as 
 odbus_hxgn_grid <- left_join(busstop_hxgn_grid, odbus,
             by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
   rename(ORIGIN_BS = BUS_STOP_N,
-         ORIGIN_SZ = grid_id) %>%
-  group_by(ORIGIN_BS, ORIGIN_SZ) %>%
-  summarise(TOT_TRIPS = sum(TOTAL_TRIPS))
+         ORIGIN_GRID = grid_id) %>%
+  group_by(ORIGIN_GRID) %>%
+  reframe(
+    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TOTAL_TRIPS))],
+    TOT_TRIPS = sum(TOTAL_TRIPS),
+    AVG_TRIPS = mean(TOTAL_TRIPS)
+  ) 
 ```
 
 As a good practice, check for duplicate records and retain duplicate records as follows.
 
 ```{R}
-duplicate <- odbus_hxgn_grid %>%
+duplicate4 <- odbus_hxgn_grid %>%
   group_by_all() %>%
   filter(n()>1) %>%
   ungroup()
@@ -524,32 +529,75 @@ Merge resultant data with hexgon grid and filter as follows
 ```{R}
 odbus_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
                            odbus_hxgn_grid,
-                           by = c("grid_id" = "ORIGIN_SZ"))%>%
-  select(ORIGIN_BS, TOT_TRIPS, hxgn_grid)
+                           by = c("grid_id" = "ORIGIN_GRID"))%>%
+  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
 
 odbus_hxgn_grid_sf = filter(odbus_hxgn_grid_sf, TOT_TRIPS > 0)
 ```
 
-### Deriving distance based-weights
+### Deriving adaptive distance based-weights
 
-Summarise statistics for neighbour distance as follows
+derive an adaptive spatial weights by using the code chunk below.
 
 ```{R}
-geo <- sf::st_geometry(odbus_hxgn_grid_sf)
-nb <- st_knn(geo, longlat = TRUE)
-dists <- unlist(st_nb_dists(geo, nb))
-
-summary(dists)
+wm_ad <- odbus_hxgn_grid_sf %>% 
+  mutate(nb = st_knn(hxgn_grid,
+                     k=8),
+         wt = st_weights(nb),
+               .before = 1)
 ```
 
-Compute the fixed distance weights as follows
+### Computing local Moran’s I
+
+Compute Local Moran’s I of GDPPC at county level by using local_moran() of sfdep package as follows.
 
 ```{R}
-wm_fd <- odbus_hxgn_grid_sf %>%
-  mutate(nb = st_dist_band(hxgn_grid,
-                           upper = 4521),
-               wt = st_weights(nb),
-               .before = 1)
+lisa <- wm_ad %>% 
+  mutate(local_moran = local_moran(
+    TOT_TRIPS, nb, wt, nsim = 99),
+         .before = 1) %>%
+  unnest(local_moran)
+```
+
+### Visualising local Moran’s I and p-value
+
+For effective comparison, it will be better for us to plot both maps next to each other as shown below.
+
+```{R}
+tmap_mode("view")
+map1 <- tm_shape(lisa) +
+  tm_fill("ii") + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "local Moran's I of Passenger Trips",
+            main.title.size = 0.8)
+
+map2 <- tm_shape(lisa) +
+  tm_fill("p_ii_sim",
+          breaks = c(0, 0.001, 0.01, 0.05, 1),
+              labels = c("0.001", "0.01", "0.05", "Not sig")) + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "p-value of local Moran's I",
+            main.title.size = 0.8)
+
+tmap_arrange(map1, map2, ncol = 2)
+```
+
+### Visualising LISA map
+
+LISA map is a categorical map showing outliers and clusters. There are two types of outliers namely: High-Low and Low-High outliers. Likewise, there are two type of clusters namely: High-High and Low-Low cluaters. In fact, LISA map is an interpreted map by combining local Moran’s I of geographical areas and their respective p-values.
+
+In lisa sf data.frame, we can find three fields contain the LISA categories. They are mean, median and pysal. In general, classification in mean will be used as shown in the code chunk below.
+
+```{R}
+lisa_sig <- lisa  %>%
+  filter(p_ii_sim < 0.05)
+tmap_mode("view")
+tm_shape(lisa) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+tm_shape(lisa_sig) +
+  tm_fill("mean") + 
+  tm_borders(alpha = 0.4)
 ```
 
 
@@ -562,7 +610,7 @@ wm_fd <- odbus_hxgn_grid_sf %>%
 
 Prepare a choropleth map showing the distribution of passenger trips at planning sub-zone level as follows
 
-```{R}
+
 tm_shape(origintrip_SZ)+
   tm_fill("TOT_TRIPS", 
           style = "quantile", 
@@ -580,11 +628,11 @@ tm_shape(origintrip_SZ)+
   tm_grid(alpha =0.2) +
   tm_credits("Source: Planning Sub-zone boundary from URA\n and Passenger trips data from LTA", 
              position = c("left", "bottom"))
-```
+
 
 ### Creating interactive map
 
-```{R}
+
 tmap_mode("view")
 tmap_options(check.and.fix = TRUE)
 tm_shape(origintrip_SZ)+
@@ -604,6 +652,6 @@ tm_shape(origintrip_SZ)+
   tm_grid(alpha =0.2) +
   tm_credits("Source: Planning Sub-zone boundary from URA\n and Passenger trips data from LTA", 
              position = c("left", "bottom"))
-```
+
 
 
