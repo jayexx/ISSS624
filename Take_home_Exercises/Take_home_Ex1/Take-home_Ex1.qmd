@@ -604,4 +604,4 @@ tm_shape(lisa_sig) +
   tm_borders(alpha = 0.4)
 ```
 
-Aligned with the earlier analysis, noticeable/sizeable low-low clusters can be observed in the north western and southwestern region of Singapore. Notwithstanding, there are also other low-low and high-high clusters sparsely distributed across the other regions, as well as rarer occurences of high-high and low-low outliers across Singapore.
+Aligned with the earlier analysis, noticeable/sizeable low-low clusters can be observed in the north western and southwestern region of Singapore. Notwithstanding, there are also other low-low and high-high clusters sparsely distributed across the other regions, as well as rarer occurences of high-low and low-high outliers across Singapore.
