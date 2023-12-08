@@ -2,3 +2,351 @@
 title: "Take-home_Ex2"
 author: "Low Ji Xiong"
 ---
+
+
+## Introduction
+
+The success of Singapore's public transport is commonly recognised as 1 of the quintessential indicator of its rapid growth and prosperity since her independence in 1965. It comprises of both public buses as well as mass rapid transport (MRT) trains. While the MRT network has been expanding across the many zones within Singapore, the bus network remains the most option accessible and reliable option amongst the two.
+
+Thus, the utilisation pattern of buses are of key importance to multiple aspects of Singapore's socio-economic spheres, ranging from areas of work productivity and efficiency, environmental impact, tourism, and even to potential impact to cost of living and real estate development; which underpins the impetus of this exercise to gain a better understanding of the utilisation patterns and characteristics of Singapore's bus stops.
+
+## Objectives
+
+The key objectives of this exercise are:
+
+-   To perform geovisualisation and analysis of peakhour busstop passenger trips
+-   To perform Analysis of Local Indicators of Spatial Association (LISA) for passenger trips
+
+## Getting Started
+
+The code chunk below load the following packages:
+
+-   tmap: for thematic mapping
+-   sf for geospatial data handling
+-   tidyverse for non-spatial data handling.
+-   knitr for creating html table
+-   spdep
+-   sfdep for creating an sf and tidyverse friendly interfaceas well as for introducing new functionality that is not present in spdep
+-   plotly for interactive plots
+
+```{r}
+pacman::p_load(tmap, sf, tidyverse, knitr, spdep, sfdep, plotly, zoo, Kendall)
+```
+
+## Importing and preparing the Base Geospatial and Aspatial Data
+
+### Aspatial data
+
+Firstly, the *Passenger Volume by Origin Destination Bus Stops* data set for the month of October 2023, from LTA DataMall, will be imported by using 'read_csv()' of \*\*readr\* package.
+
+```{r}
+#\| eval: false 
+odbus <- read.csv("data/aspatial/origin_destination_bus_202310.csv")
+```
+
+From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tibble data frame are in numeric data type.
+
+```{r}
+glimpse(odbus)
+```
+
+Using appropriate tidyverse functions to convert these data values into factor data type.
+
+```{r}
+odbus$ORIGIN_PT_CODE <- as.factor(odbus$ORIGIN_PT_CODE)
+odbus$DESTINATION_PT_CODE <- as.factor(odbus$DESTINATION_PT_CODE)
+```
+
+From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tibble data frame are now in factor data type.
+
+```{r}
+glimpse(odbus)
+```
+
+### Geospatial data
+
+Import BusStop layer downloaded from LTA DataMall into RStudio and save it as a sf data frame called busstop.
+
+```{r}
+busstop <- st_read(dsn = "data/geospatial",
+                   layer = "BusStop") %>%
+  st_transform(crs = 3414)
+```
+
+The structure of busstop sf tibble data frame is as follows.
+
+```{R}
+glimpse(busstop)
+```
+
+## Objective (1): Geovisualisation and Analysis of Bus Stop Passengers during Peakhours
+
+### Extracting the passenger trips for peakhour time intervals
+
+For the purpose of this exercise, extract commuting flows during:
+
+-   weekday morning peak and label the output tibble data table as odbus_wkd6_9.
+
+```{r}
+odbus_wkd6_9 <- odbus %>%
+  filter(DAY_TYPE == "WEEKDAY") %>%
+  filter(TIME_PER_HOUR >= 6 &
+           TIME_PER_HOUR <= 9) %>%
+  group_by(ORIGIN_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS))
+```
+
+-   weekday evening peak and label the output tibble data table as odbus_wkd17_20.
+
+```{r}
+odbus_wkd17_20 <- odbus %>%
+  filter(DAY_TYPE == "WEEKDAY") %>%
+  filter(TIME_PER_HOUR >= 17 &
+           TIME_PER_HOUR <= 20) %>%
+  group_by(ORIGIN_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS))
+```
+
+-   weekend/holiday morning peak and label the output tibble data table as odbus_wke11_14.
+
+```{r}
+odbus_wke11_14 <- odbus %>%
+  filter(DAY_TYPE == "WEEKENDS/HOLIDAY") %>%
+  filter(TIME_PER_HOUR >= 11 &
+           TIME_PER_HOUR <= 14) %>%
+  group_by(ORIGIN_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS))
+```
+
+-   weekend/holiday evening peak and label the output tibble data table as odbus_wke16_19.
+
+```{r}
+odbus_wke16_19 <- odbus %>%
+  filter(DAY_TYPE == "WEEKENDS/HOLIDAY") %>%
+  filter(TIME_PER_HOUR >= 16 &
+           TIME_PER_HOUR <= 19) %>%
+  group_by(ORIGIN_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS))
+```
+
+Convert and save the tible data sets in rds format as follows.
+
+```{R}
+write_rds(odbus_wkd6_9, "data/rds/odbus_wkd6_9.rds")
+write_rds(odbus_wkd17_20, "data/rds/odbus_wkd17_20.rds")
+write_rds(odbus_wke11_14, "data/rds/odbus_wke11_14.rds")
+write_rds(odbus_wke16_19, "data/rds/odbus_wke16_19.rds")
+```
+
+Import files back into R as follows.
+
+```{R}
+odbus_wkd6_9 <- read_rds("data/rds/odbus_wkd6_9.rds")
+odbus_wkd17_20 <- read_rds("data/rds/odbus_wkd17_20.rds")
+odbus_wke11_14 <- read_rds("data/rds/odbus_wke11_14.rds")
+odbus_wke16_19 <- read_rds("data/rds/odbus_wke16_19.rds")
+```
+
+### Preparing Geospatial data in Hexagonal grid
+
+Creating hexagonal grid in sf format with grid_id as follows.
+
+```{R}
+hxgn_grid = st_make_grid(busstop, c(250, 250), what = "polygons", square = FALSE)
+
+# To sf and add grid ID
+hxgn_grid_sf = st_sf(hxgn_grid) %>%
+  mutate(grid_id = 1:length(lengths(hxgn_grid)))
+```
+
+Merging imported busstop data with Hexagonal grid as follows.
+
+```{R}
+busstop_hxgn_grid <- st_intersection(busstop, hxgn_grid_sf) %>%
+  select(BUS_STOP_N, grid_id) %>%
+  st_drop_geometry()
+```
+
+Checking for BUS_STOP_N with duplicate grid_id, and grid_id with duplicate BUS_STOP_N.
+
+```{R}
+check_duplicate <- busstop_hxgn_grid %>%
+  group_by(grid_id) %>%
+  summarise(num_BUS_STOP_N = n_distinct(BUS_STOP_N))
+
+check_duplicate1 <- busstop_hxgn_grid %>%
+  group_by(BUS_STOP_N) %>%
+  summarise(num_grid_id = n_distinct(grid_id))
+```
+
+From the above, - out of 3,131 grid_id, 1,476 (47%) grid_id contain 2 busstops, 1,410 (45%) grid_id contain only 1 busstop, and the remaining 8% containing more than 2 busstops. Only 1 grid_id has the maximum of 5 busstops. - out of 5,145 busstops, only 8 intercept across 2 grid_id.
+
+Hence, for this exercise, to avoid double counting of trips subsequently, the duplicate grid_id for the 8 busstops are removed.
+
+```{R}
+busstop_hxgn_grid <- distinct(busstop_hxgn_grid, BUS_STOP_N, .keep_all = TRUE)
+```
+
+### Merging Peakhour Passenger Trips with Geospatial data
+
+#### Weekday morning peak
+
+Append the merged busstop_hxgn_grid frame onto odbus_wkd6_9 data frame as follows.
+
+```{R}
+wkd6_9_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wkd6_9,
+            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
+  rename(ORIGIN_BS = BUS_STOP_N,
+         ORIGIN_GRID = grid_id) %>%
+  group_by(ORIGIN_GRID) %>%
+  reframe(
+    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
+    TOT_TRIPS = sum(TRIPS),
+    AVG_TRIPS = mean(TRIPS)
+  ) 
+```
+
+As a good practice, check for duplicate records and retain duplicate records as follows.
+
+```{R}
+duplicate <- wkd6_9_hxgn_grid %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+wkd6_9_hxgn_grid <- unique(wkd6_9_hxgn_grid)
+```
+
+Merge resultant data with hexgon grid and filter as follows
+
+```{R}
+wkd6_9_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
+                           wkd6_9_hxgn_grid,
+                           by = c("grid_id" = "ORIGIN_GRID"))%>%
+  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+
+wkd6_9_hxgn_grid_sf = filter(wkd6_9_hxgn_grid_sf, TOT_TRIPS > 0)
+```
+
+#### Weekday evening peak
+
+Append the merged busstop_hxgn_grid frame onto odbus_wkd17_20 data frame as follows.
+
+```{R}
+wkd17_20_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wkd17_20,
+            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
+  rename(ORIGIN_BS = BUS_STOP_N,
+         ORIGIN_GRID = grid_id) %>%
+  group_by(ORIGIN_GRID) %>%
+  reframe(
+    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
+    TOT_TRIPS = sum(TRIPS),
+    AVG_TRIPS = mean(TRIPS)
+  )
+```
+
+As a good practice, check for duplicate records and retain duplicate records as follows.
+
+```{R}
+duplicate1 <- wkd17_20_hxgn_grid %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+wkd17_20_hxgn_grid <- unique(wkd17_20_hxgn_grid)
+```
+
+Merge resultant data with hexgon grid and filter as follows
+
+```{R}
+wkd17_20_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
+                           wkd17_20_hxgn_grid,
+                           by = c("grid_id" = "ORIGIN_GRID"))%>%
+  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+
+wkd17_20_hxgn_grid_sf = filter(wkd17_20_hxgn_grid_sf, TOT_TRIPS > 0)
+```
+
+#### Weekend/holiday morning peak
+
+Append the merged busstop_hxgn_grid frame onto odbus_wke11_14 data frame as follows.
+
+```{R}
+wke11_14_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wke11_14,
+            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
+  rename(ORIGIN_BS = BUS_STOP_N,
+         ORIGIN_GRID = grid_id) %>%
+  group_by(ORIGIN_GRID) %>%
+  reframe(
+    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
+    TOT_TRIPS = sum(TRIPS),
+    AVG_TRIPS = mean(TRIPS)
+  )
+```
+
+As a good practice, check for duplicate records and retain duplicate records as follows.
+
+```{R}
+duplicate2 <- wke11_14_hxgn_grid %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+wke11_14_hxgn_grid <- unique(wke11_14_hxgn_grid)
+```
+
+Merge resultant data with hexgon grid and filter as follows
+
+```{R}
+wke11_14_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
+                           wke11_14_hxgn_grid,
+                           by = c("grid_id" = "ORIGIN_GRID"))%>%
+  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+
+wke11_14_hxgn_grid_sf = filter(wke11_14_hxgn_grid_sf, TOT_TRIPS > 0)
+```
+
+#### Weekend/holiday evening peak
+
+Append the merged busstop_hxgn_grid frame onto odbus_wke16_19 data frame as follows.
+
+```{R}
+wke16_19_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wke16_19,
+            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
+  rename(ORIGIN_BS = BUS_STOP_N,
+         ORIGIN_GRID = grid_id) %>%
+  group_by(ORIGIN_GRID) %>%
+  reframe(
+    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
+    TOT_TRIPS = sum(TRIPS),
+    AVG_TRIPS = mean(TRIPS)
+  )
+```
+
+As a good practice, check for duplicate records and retain duplicate records as follows.
+
+```{R}
+duplicate3 <- wke16_19_hxgn_grid %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+wke16_19_hxgn_grid <- unique(wke16_19_hxgn_grid)
+```
+
+Merge resultant data with hexgon grid and filter as follows
+
+```{R}
+wke16_19_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
+                           wke16_19_hxgn_grid,
+                           by = c("grid_id" = "ORIGIN_GRID"))%>%
+  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+
+wke16_19_hxgn_grid_sf = filter(wke16_19_hxgn_grid_sf, TOT_TRIPS > 0)
+```
+
+### Geovisualisation of Busstop Peakhour periods
+
+Plot the map with hexagonal grid as follows for:
+
+-   Weekday morning peak
