@@ -1,0 +1,103 @@
+---
+title: "In-class_Ex4_ctd"
+---
+
+```{R}
+pacman::p_load(tmap, sf, performance, ggpubr, tidyverse)
+```
+
+```{R}
+flow_data <- read_rds("data/rds/flow_data_tidy.rds")
+```
+
+```{R}
+glimpse(flow_data)
+```
+
+```{R}
+flow_data$FlowNoIntra <- ifelse(
+  flow_data$ORIGIN_SZ == flow_data$DESTIN_SZ,
+  0, flow_data$MORNING_PEAK)
+flow_data$offset <- ifelse(
+  flow_data$ORIGIN_SZ == flow_data$DESTIN_SZ,
+0.000001,1)
+
+inter_zonal_flow <- flow_data %>%
+  filter(FlowNoIntra > 0 )
+
+inter_zonal_flow<- inter_zonal_flow %>%
+  rename(TRIPS = MORNING_PEAK,
+         DIST = dist)
+  
+```
+
+### Origin (Production) constrained SIM
+
+fit an origin constrained SIM as follows
+
+```{R}
+orcSIM_Poisson <- glm(formula = TRIPS ~
+                      ORIGIN_SZ + 
+                        log(SCHOOL_COUNT)+
+                        log(RETAIL_COUNT)+
+                        log(DIST)-1,
+                      family = poisson(link = "log"),
+                      data = inter_zonal_flow,
+                      na.action = na.exclude)
+
+summary(orcSIM_Poisson)
+```
+
+### Goodness of Fit
+
+```{R}
+CalcRSquared <- function(observed, estimated){
+  r<- cor(observed,estimated)
+  R2 <- r^2
+  R2
+}
+```
+
+examine how the constraints hold for destinations this time.
+
+```{R}
+CalcRSquared(orcSIM_Poisson$data$TRIPS, orcSIM_Poisson$fitted.values)
+```
+
+```{R}
+performance_rmse(orcSIM_Poisson,
+  normalized = FALSE)
+```
+
+### Doubly Constrained
+
+fit a doubly constrained SIM as follows
+
+general formula of Doubly Constrained Spatial Interaction Model
+
+```{R}
+dbcSIM_Poisson <- glm(formula = TRIPS ~
+    ORIGIN_SZ +
+    DESTIN_SZ +
+    log(DIST),
+  family = poisson(link = "log"),
+  data = inter_zonal_flow,
+  na.action = na.exclude)
+
+dbcSIM_Poisson
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

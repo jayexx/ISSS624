@@ -1,0 +1,147 @@
+---
+title: "In-class_Ex4: GeoSpatial Data Science with R"
+---
+
+## Overview
+
+Hands-on experience on the following tasks:
+- performing geocoding using data downloaded from data.gov.sg
+- calibrating Geographically Weighted Poisson Regression
+
+## Getting Started
+
+The code chunks below installs and launches these R packages into R environment.
+
+```{R}
+pacman::p_load(sf, tmap, tidyverse, httr)
+```
+
+## Geocoding using SLA API
+
+Geocoding is the process of taking an aspatial description of a location and returning geographic coordinates
+
+The found data will be joined with the initial csv data by using a unique identifier (i.e. POSTAL) common to both data tables. The output data table will then save as an csv file called found.
+
+```{R}
+#| eval: false
+url<-"https://www.onemap.gov.sg/api/common/elastic/search"
+
+csv<-read_csv("data/aspatial/Generalinformationofschools.csv")
+postcodes<-csv$'postal_code'
+
+found<-data.frame()
+not_found<-data.frame()
+
+for(postcode in postcodes){
+  query<-list('searchVal'=postcode, 'returnGeom'='Y', 'getAddrDetails'='Y','pageNum'='1')
+  res<- GET(url,query=query)
+  
+  if((content(res)$found)!=0){
+    found<-rbind(found,data.frame(content(res))[4:13])
+  } else{
+    not_found = data.frame(postcode)
+
+  }
+}
+```
+
+Next, combine both found and not_found data.frames into a single data.frame called merged. At the same time, write merged and not_found tibble data.fraems into csv file
+
+```{R}
+#| eval: false
+merged = merge(csv, found,by.x = 'postal_code', by.y = 'results.POSTAL', all = TRUE)
+write.csv(merged,file = "data/aspatial/schools.csv")
+write.csv(not_found,file = "data/aspatial/not_found.csv")
+```
+
+##### Do it yourself
+- Using Google map, locate the location info of the ungeocoded school (zhenghua secondary) by using its postcode.
+- Update the results.LATITUDE and results.LONGITUDE fields of the ungeocoded record in schools.csv manually
+- For Zhenghua Secondary update longlat as 1.389279, 103.7651 
+
+## Converting an aspatial data into a simple feature tibble data.frame
+
+### Importing and tidying schools data
+
+Importing and tidying schools data, rename latitude & longitude and retain
+
+```{R}
+schools<-read_csv("data/aspatial/schools.csv") %>%
+  rename(latitude = "results.LATITUDE",
+         longitude = "results.LONGITUDE")%>%
+  select(postal_code, school_name, latitude, longitude)
+```
+
+### Converting an aspatial data into sf tibble data.frame
+
+Convert aspatial data into a simple feature tibble data.frame called schools_sf
+
+```{R}
+schools_sf <- st_as_sf(schools,
+                       coords = c("longitude","latitude"),
+                       crs=4326) %>%
+st_transform(crs = 3414)
+```
+
+### Plotting a point simple feature layer
+
+Ensure schools_sf tibble data.frame has been projected and converted correctly, you can plot the schools point data for visual inspection.
+
+create a point symbol map showing the location of 
+
+```{R}
+mpsz = st_read(dsn = "data/geospatial", layer = "MPSZ-2019")%>%
+st_transform(crs = 3414)
+school_mpsz <- st_intersects(mpsz, schools_sf)
+
+tmap
+```
+
+
+## Preparing
+
+count the number of schools within each planning subzone by using appropriate sf function
+
+```{R}
+mpsz$'SCHOOL_COUNT'<-lengths(
+  st_intersects(
+    mpsz, schools_sf))
+```
+
+Good practice to examine summary stat of derived variable.
+
+compute and display summary stat of sch_count field.
+
+```{R}
+summary(mpsz$SCHOOL_COUNT)
+```
+
+```{R}
+business_sf = st_read(dsn = "data/geospatial", layer = "MPSZ-2019")%>%
+st_transform(crs = 3414)
+
+```
+
+```{R}
+tmap_options(check.and.fix = TRUE)
+tm_shape(mpsz) + #plot outline
+  tm_polygons() + 
+tm_shape(business_sf) + #plot specific retail outlets
+  tm_dots()
+```
+
+```{R}
+flow_data <- flow_data %>%
+  left_join(mpsz_tidy, 
+            by = c("DESTIN_SZ" = "SUBZONE_C"))
+```
+
+### Checking for variables with zero values
+
+report above reveals that 
+
+
+
+
+
+
