@@ -85,16 +85,21 @@ st_transform(crs = 3414)
 
 ### Plotting a point simple feature layer
 
-Ensure schools_sf tibble data.frame has been projected and converted correctly, you can plot the schools point data for visual inspection.
+To ensure schools_sf tibble data.frame has been projected and converted correctly, plot the schools point data for visual inspection.
 
 create a point symbol map showing the location of 
 
 ```{R}
 mpsz = st_read(dsn = "data/geospatial", layer = "MPSZ-2019")%>%
 st_transform(crs = 3414)
-school_mpsz <- st_intersects(mpsz, schools_sf)
 
-tmap
+tmap_mode("plot")
+tm_shape(mpsz)+
+  tmap_options(check.and.fix = TRUE) +
+  tm_polygons(alpha = 0.4) +
+tm_shape(schools_sf) +  
+  tm_dots(alpha = 0.6) +
+  tm_view(set.zoom.limits = c(11,14))
 ```
 
 
@@ -117,7 +122,7 @@ summary(mpsz$SCHOOL_COUNT)
 ```
 
 ```{R}
-business_sf = st_read(dsn = "data/geospatial", layer = "MPSZ-2019")%>%
+business_sf = st_read(dsn = "data/geospatial", layer = "Business")%>%
 st_transform(crs = 3414)
 
 ```
@@ -130,6 +135,21 @@ tm_shape(business_sf) + #plot specific retail outlets
   tm_dots()
 ```
 
+## Data Integration and Wrangling
+
+```{R}
+flow_data <- read_rds("data/rds/flow_data_tidy.rds")%>%
+  st_transform(crs = 3414)
+```
+
+```{R}
+mpsz_tidy <- st_intersection(flow_data, mpsz) %>%
+  select(SUBZONE_N, SUBZONE_C) %>%
+  st_drop_geometry()
+```
+
+append mpsz_tidy
+
 ```{R}
 flow_data <- flow_data %>%
   left_join(mpsz_tidy, 
@@ -138,10 +158,23 @@ flow_data <- flow_data %>%
 
 ### Checking for variables with zero values
 
-report above reveals that 
+Since Poisson Regression is based on log and log 0 is undefined, need to ensure no 0 values in explanatory variables
 
+Compute summary stats of all variables as follows.
 
+```{R}
+summary(flow_data)
+```
 
+report above reveals that all of the variables have a min >0
+
+If required the following examnple code can be used to replace with 0.99
+
+```{R}
+flow_data$SCHOOL_COUNT <- ifelse(
+  flow_data$SCHOOL_COUNT == 0,
+  0.99, flow_data$SCHOOL_COUNT)
+```
 
 
 
