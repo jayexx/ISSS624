@@ -94,6 +94,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   }
 }</script>
 
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
 
 <link rel="stylesheet" href="../../styles.css">
 </head>
@@ -893,6 +895,8 @@ max values  :      99189,   13258 </code></pre>
 <h3 class="anchored" data-anchor-id="formulating-spatial-interaction-models">Formulating Spatial Interaction Models</h3>
 <section id="preparing-flow-data-o-d-attributes" class="level4">
 <h4 class="anchored" data-anchor-id="preparing-flow-data-o-d-attributes">Preparing Flow Data &amp; O-D attributes</h4>
+<p>Separate the intra-grid flow and from the rest of the flow data within the data.frame, and add three new fields in flow_data dataframe.</p>
+<p>flow_data<span class="math inline">\(FlowNoIntra &lt;- ifelse(  flow_data\)</span>ORIGIN_SZ == flow_data<span class="math inline">\(DESTIN_SZ,  0, flow_data\)</span>TRIPS) flow_data<span class="math inline">\(offset &lt;- ifelse(  flow_data\)</span>ORIGIN_SZ == flow_data$DESTIN_SZ, 0.000001, 1)</p>
 </section>
 <section id="calibrating-spatial-interaction-models" class="level4">
 <h4 class="anchored" data-anchor-id="calibrating-spatial-interaction-models">Calibrating Spatial Interaction Models</h4>

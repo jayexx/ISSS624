@@ -492,6 +492,17 @@ write_rds(distPair, "data/rds/distPair.rds")
 
 #### Preparing Flow Data & O-D attributes
 
+In preparation for the modelling, the intra-grid flow is separated from the rest of the flow data in the flow data.frame (ie wkd17-20_hxgn_grid), and  an offset column is created for subsequent data wrangling with the addition of 2 new columns as follows.
+
+```{R}
+wkd17_20_hxgn_grid$FlowNoIntra <- ifelse(
+  wkd17_20_hxgn_grid$ORIGIN_GRID == wkd17_20_hxgn_grid$DESTIN_GRID, 
+  0, wkd17_20_hxgn_grid$TOT_TRIPS)
+wkd17_20_hxgn_grid$offset <- ifelse(
+  wkd17_20_hxgn_grid$ORIGIN_GRID == wkd17_20_hxgn_grid$DESTIN_GRID, 
+  0.000001, 1)
+```
+
 #### Calibrating Spatial Interaction Models
 
 ### Geovisualisation and Graphical Plots of Spatial Interaction Models

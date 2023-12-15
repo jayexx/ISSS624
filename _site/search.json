@@ -361,6 +361,6 @@
     "href": "Take_home_Exercises/Take_home_Ex2/Take-home_Ex2.html#objective-2-spatial-interaction-modelling-for-o-d-flows-of-passengers-during-weekday-evening-peakhour",
     "title": "Take-home_Ex2",
     "section": "Objective (2): Spatial Interaction Modelling for O-D Flows of Passengers During Weekday Evening Peakhour",
-    "text": "Objective (2): Spatial Interaction Modelling for O-D Flows of Passengers During Weekday Evening Peakhour\n\nFormulating Spatial Interaction Models\n\nPreparing Flow Data & O-D attributes\n\n\nCalibrating Spatial Interaction Models\n\n\n\nGeovisualisation and Graphical Plots of Spatial Interaction Models\n\n\nAnalysis of Spatial Interaction Modelling Results"
+    "text": "Objective (2): Spatial Interaction Modelling for O-D Flows of Passengers During Weekday Evening Peakhour\n\nFormulating Spatial Interaction Models\n\nPreparing Flow Data & O-D attributes\nSeparate the intra-grid flow and from the rest of the flow data within the data.frame, and add three new fields in flow_data dataframe.\nflow_data\\(FlowNoIntra &lt;- ifelse(  flow_data\\)ORIGIN_SZ == flow_data\\(DESTIN_SZ,  0, flow_data\\)TRIPS) flow_data\\(offset &lt;- ifelse(  flow_data\\)ORIGIN_SZ == flow_data$DESTIN_SZ, 0.000001, 1)\n\n\nCalibrating Spatial Interaction Models\n\n\n\nGeovisualisation and Graphical Plots of Spatial Interaction Models\n\n\nAnalysis of Spatial Interaction Modelling Results"
   }
 ]
