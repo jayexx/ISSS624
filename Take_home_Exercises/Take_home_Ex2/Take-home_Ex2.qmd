@@ -14,50 +14,53 @@ Thus, the utilisation pattern of buses are of key importance to multiple aspects
 
 The key objectives of this exercise are:
 
--   To perform geovisualisation and analysis of peakhour busstop passenger trips
--   To perform Analysis of Local Indicators of Spatial Association (LISA) for passenger trips
+-   To perform geovisualisation and analysis of Origin-Destination flows of passenger trips
+-   To perform Spatial Interaction Modelling for Origin-Destination flows of passenger trips
 
 ## Getting Started
 
 The code chunk below load the following packages:
 
 -   tmap: for thematic mapping
--   sf for geospatial data handling
--   tidyverse for non-spatial data handling.
--   knitr for creating html table
--   spdep
--   sfdep for creating an sf and tidyverse friendly interfaceas well as for introducing new functionality that is not present in spdep
--   plotly for interactive plots
+-   sf: for simple feature geospatial data handling
+-   sp: for spatial polygon geospatial data handling
+-   tidyverse: for non-spatial data handling.
+-   knitr: for creating html table
+-   reshape2: for reshaping functions
+-   stplanr:
+-   spdep:
+-   sfdep: for creating an sf and tidyverse friendly interface as well as for introducing new functionality that is not present in spdep
+-   plotly: for interactive plots
 
 ```{r}
-pacman::p_load(tmap, sf, tidyverse, knitr, spdep, sfdep, plotly, zoo, Kendall)
+pacman::p_load(tmap, sf, sp, tidyverse, knitr,  reshape2, stplanr) # plotly, zoo, Kendall,sfdep,spdep,
 ```
 
 ## Importing and preparing the Base Geospatial and Aspatial Data
 
 ### Aspatial data
 
-Firstly, the *Passenger Volume by Origin Destination Bus Stops* data set for the month of October 2023, from LTA DataMall, will be imported by using 'read_csv()' of \*\*readr\* package.
+Firstly, the data set *Passenger Volume by Origin Destination Bus Stops* for the month of October 2023 from LTA DataMall, will be imported by using 'read_csv()' of \*\*readr\* package.
 
 ```{r}
-#\| eval: false 
 odbus <- read.csv("data/aspatial/origin_destination_bus_202310.csv")
 ```
 
-From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tibble data frame are in numeric data type.
+Glimpse function is then used to discover the data type of the variables in the dataset. 
 
 ```{r}
 glimpse(odbus)
 ```
+From above, the values in ORIGIN_PT_CODE and DESTINATON_PT_CODE in the odbus tibble data frame are in numeric data type.
 
-Using appropriate tidyverse functions to convert these data values into factor data type.
+Using appropriate tidyverse functions, these data values will be  converted into factor data type.
 
 ```{r}
 odbus$ORIGIN_PT_CODE <- as.factor(odbus$ORIGIN_PT_CODE)
 odbus$DESTINATION_PT_CODE <- as.factor(odbus$DESTINATION_PT_CODE)
 ```
 
-From below, the values in OROGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tibble data frame are now in factor data type.
+Using Glimpse once more to check, the values in ORIGIN_PT_CODE and DESTINATON_PT_CODE odbus in the tibble data frame are now in factor data type, as below.
 
 ```{r}
 glimpse(odbus)
@@ -65,7 +68,7 @@ glimpse(odbus)
 
 ### Geospatial data
 
-Import BusStop layer downloaded from LTA DataMall into RStudio and save it as a sf data frame called busstop.
+The geospatial data for BusStop downloaded from LTA DataMall into RStudio is then imported and saved as a sf data frame named busstop. Projected coordinate system is selected, which tends to be more accurate for distance measurement.
 
 ```{r}
 busstop <- st_read(dsn = "data/geospatial",
@@ -73,93 +76,35 @@ busstop <- st_read(dsn = "data/geospatial",
   st_transform(crs = 3414)
 ```
 
-The structure of busstop sf tibble data frame is as follows.
+Using the glimpse() function, the structure of busstop sf tibble data frame is as follows.
 
 ```{R}
 glimpse(busstop)
 ```
 
-## Objective (1): Geovisualisation and Analysis of Bus Stop Passengers during Peakhours
-
-### Extracting the passenger trips for peakhour time intervals
-
-For the purpose of this exercise, extract commuting flows during:
-
--   weekday morning peak and label the output tibble data table as odbus_wkd6_9.
-
-```{r}
-odbus_wkd6_9 <- odbus %>%
-  filter(DAY_TYPE == "WEEKDAY") %>%
-  filter(TIME_PER_HOUR >= 6 &
-           TIME_PER_HOUR <= 9) %>%
-  group_by(ORIGIN_PT_CODE) %>%
-  summarise(TRIPS = sum(TOTAL_TRIPS))
-```
-
--   weekday evening peak and label the output tibble data table as odbus_wkd17_20.
-
-```{r}
-odbus_wkd17_20 <- odbus %>%
-  filter(DAY_TYPE == "WEEKDAY") %>%
-  filter(TIME_PER_HOUR >= 17 &
-           TIME_PER_HOUR <= 20) %>%
-  group_by(ORIGIN_PT_CODE) %>%
-  summarise(TRIPS = sum(TOTAL_TRIPS))
-```
-
--   weekend/holiday morning peak and label the output tibble data table as odbus_wke11_14.
-
-```{r}
-odbus_wke11_14 <- odbus %>%
-  filter(DAY_TYPE == "WEEKENDS/HOLIDAY") %>%
-  filter(TIME_PER_HOUR >= 11 &
-           TIME_PER_HOUR <= 14) %>%
-  group_by(ORIGIN_PT_CODE) %>%
-  summarise(TRIPS = sum(TOTAL_TRIPS))
-```
-
--   weekend/holiday evening peak and label the output tibble data table as odbus_wke16_19.
-
-```{r}
-odbus_wke16_19 <- odbus %>%
-  filter(DAY_TYPE == "WEEKENDS/HOLIDAY") %>%
-  filter(TIME_PER_HOUR >= 16 &
-           TIME_PER_HOUR <= 19) %>%
-  group_by(ORIGIN_PT_CODE) %>%
-  summarise(TRIPS = sum(TOTAL_TRIPS))
-```
-
-Convert and save the tible data sets in rds format as follows.
+The geospatial data for the Singapore Master Plan Subzone 2019 data downloaded from data.gov.sg is also imported and save it as a sf data frame named mpsz, similarly in projected coordinate system.
 
 ```{R}
-write_rds(odbus_wkd6_9, "data/rds/odbus_wkd6_9.rds")
-write_rds(odbus_wkd17_20, "data/rds/odbus_wkd17_20.rds")
-write_rds(odbus_wke11_14, "data/rds/odbus_wke11_14.rds")
-write_rds(odbus_wke16_19, "data/rds/odbus_wke16_19.rds")
+mpsz <- st_read(dsn = "data/geospatial",layer ="MPSZ-2019") %>%
+  st_transform(crs = 3414)
 ```
+### Preparing Hexagonal Grid for Traffic Analysis Zone (TAZ)
 
-Import files back into R as follows.
+Creating hexagonal grid in sf format with grid_id as follows. 
 
 ```{R}
-odbus_wkd6_9 <- read_rds("data/rds/odbus_wkd6_9.rds")
-odbus_wkd17_20 <- read_rds("data/rds/odbus_wkd17_20.rds")
-odbus_wke11_14 <- read_rds("data/rds/odbus_wke11_14.rds")
-odbus_wke16_19 <- read_rds("data/rds/odbus_wke16_19.rds")
-```
-
-### Preparing Geospatial data in Hexagonal grid
-
-Creating hexagonal grid in sf format with grid_id as follows.
-
-```{R}
-hxgn_grid = st_make_grid(busstop, c(250, 250), what = "polygons", square = FALSE)
+hxgn_grid = st_make_grid(mpsz, c(375, 375), what = "polygons", square = FALSE)
 
 # To sf and add grid ID
 hxgn_grid_sf = st_sf(hxgn_grid) %>%
   mutate(grid_id = 1:length(lengths(hxgn_grid)))
 ```
 
-Merging imported busstop data with Hexagonal grid as follows.
+In the above, the hexagonal grid size is chosen to be 375m by 375m is based on the assumption that the maximum willingness of an average commuter to walk being 375m*2 which is 750m. 
+
+### Merging Hexagonal Grid with Busstop Geospatial data
+
+Imported busstop data is merged with Hexagonal grid as follows.
 
 ```{R}
 busstop_hxgn_grid <- st_intersection(busstop, hxgn_grid_sf) %>%
@@ -167,88 +112,71 @@ busstop_hxgn_grid <- st_intersection(busstop, hxgn_grid_sf) %>%
   st_drop_geometry()
 ```
 
-Checking for BUS_STOP_N with duplicate grid_id, and grid_id with duplicate BUS_STOP_N.
+Check for BUS_STOP_N with duplicate grid_id is then performed as follows.
 
 ```{R}
 check_duplicate <- busstop_hxgn_grid %>%
-  group_by(grid_id) %>%
-  summarise(num_BUS_STOP_N = n_distinct(BUS_STOP_N))
-
-check_duplicate1 <- busstop_hxgn_grid %>%
   group_by(BUS_STOP_N) %>%
   summarise(num_grid_id = n_distinct(grid_id))
 ```
+From the resultant table in the code above, out of 5,144 busstops, 4 intercept across 2 grid_id.
 
-From the above, - out of 3,131 grid_id, 1,476 (47%) grid_id contain 2 busstops, 1,410 (45%) grid_id contain only 1 busstop, and the remaining 8% containing more than 2 busstops. Only 1 grid_id has the maximum of 5 busstops. - out of 5,145 busstops, only 8 intercept across 2 grid_id.
-
-Hence, for this exercise, to avoid double counting of trips subsequently, the duplicate grid_id for the 8 busstops are removed.
+Hence, for this exercise, to avoid double counting of trips subsequently, the duplicate grid_id for the 4 busstops are removed.
 
 ```{R}
 busstop_hxgn_grid <- distinct(busstop_hxgn_grid, BUS_STOP_N, .keep_all = TRUE)
 ```
 
-### Merging Peakhour Passenger Trips with Geospatial data
-
-#### Weekday morning peak
-
-Append the merged busstop_hxgn_grid frame onto odbus_wkd6_9 data frame as follows.
+busstop_hxgn_grid data is re-merged with sf tibble data and converted to sf object class for subsequent geo-visualisation of hexagon grid for all busstops in Singapore, named as busstop_hxgn_grid_sf.
 
 ```{R}
-wkd6_9_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wkd6_9,
-            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
-  rename(ORIGIN_BS = BUS_STOP_N,
-         ORIGIN_GRID = grid_id) %>%
-  group_by(ORIGIN_GRID) %>%
-  reframe(
-    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
-    TOT_TRIPS = sum(TRIPS),
-    AVG_TRIPS = mean(TRIPS)
-  ) 
+busstop_hxgn_grid_sf <- left_join(busstop_hxgn_grid, 
+                           hxgn_grid_sf,
+                           by = c("grid_id" = "grid_id"))%>%
+  select(BUS_STOP_N, grid_id, hxgn_grid) %>%
+  st_sf()
+
+tm_shape(busstop_hxgn_grid_sf) + 
+  tm_polygons()
 ```
 
-As a good practice, check for duplicate records and retain duplicate records as follows.
+### Extracting the passenger trips for Weekday Evening Peakhour
+
+For the purpose of this exercise, extract commuting flows during weekday evening peak and label the output tibble data table as odbus_wkd17_20.
+
+```{r}
+odbus_wkd17_20 <- odbus %>%
+  filter(DAY_TYPE == "WEEKDAY") %>%
+  filter(TIME_PER_HOUR >= 17 &
+           TIME_PER_HOUR <= 20) %>%
+  group_by(ORIGIN_PT_CODE,
+           DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS))
+```
+
+The tible data sets is converted and saved in rds format and imported back into R as follows.
 
 ```{R}
-duplicate <- wkd6_9_hxgn_grid %>%
-  group_by_all() %>%
-  filter(n()>1) %>%
-  ungroup()
-
-wkd6_9_hxgn_grid <- unique(wkd6_9_hxgn_grid)
+write_rds(odbus_wkd17_20, "data/rds/odbus_wkd17_20.rds")
+odbus_wkd17_20 <- read_rds("data/rds/odbus_wkd17_20.rds")
 ```
 
-Merge resultant data with hexgon grid and filter as follows
+### Merging Weekday Evening Peakhour Passenger Trips with Geospatial data
 
-```{R}
-wkd6_9_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
-                           wkd6_9_hxgn_grid,
-                           by = c("grid_id" = "ORIGIN_GRID"))%>%
-  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
-
-wkd6_9_hxgn_grid_sf = filter(wkd6_9_hxgn_grid_sf, TOT_TRIPS > 0)
-```
-
-#### Weekday evening peak
-
-Append the merged busstop_hxgn_grid frame onto odbus_wkd17_20 data frame as follows.
+The merged busstop_hxgn_grid frame is then appended onto odbus_wkd17_20 data frame as follows.
 
 ```{R}
 wkd17_20_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wkd17_20,
             by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
   rename(ORIGIN_BS = BUS_STOP_N,
-         ORIGIN_GRID = grid_id) %>%
-  group_by(ORIGIN_GRID) %>%
-  reframe(
-    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
-    TOT_TRIPS = sum(TRIPS),
-    AVG_TRIPS = mean(TRIPS)
-  )
+         ORIGIN_GRID = grid_id,
+         DESTIN_BS = DESTINATION_PT_CODE)
 ```
 
 As a good practice, check for duplicate records and retain duplicate records as follows.
 
 ```{R}
-duplicate1 <- wkd17_20_hxgn_grid %>%
+check_duplicate1 <- wkd17_20_hxgn_grid %>%
   group_by_all() %>%
   filter(n()>1) %>%
   ungroup()
@@ -256,97 +184,322 @@ duplicate1 <- wkd17_20_hxgn_grid %>%
 wkd17_20_hxgn_grid <- unique(wkd17_20_hxgn_grid)
 ```
 
-Merge resultant data with hexgon grid and filter as follows
+Repeat the same steps to obtain the DESTIN_GRID by joining with busstop_hxgn_grid once more as follows
 
 ```{R}
-wkd17_20_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
+wkd17_20_hxgn_grid <- left_join(busstop_hxgn_grid, wkd17_20_hxgn_grid,
+            by = c("BUS_STOP_N" = "DESTIN_BS"))
+```
+
+
+```{R}
+check_duplicate2 <- wkd17_20_hxgn_grid %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+wkd17_20_hxgn_grid <- unique(wkd17_20_hxgn_grid)
+```
+
+For this analysis, the trips are summed across multiple bus stops within each Hexagon grid, as follows.
+
+```{R}
+wkd17_20_hxgn_grid <- wkd17_20_hxgn_grid%>%
+  rename(DESTIN_GRID = grid_id) %>%
+  drop_na() %>%
+  group_by(ORIGIN_GRID, DESTIN_GRID) %>%
+  summarise(TOT_TRIPS = sum(TRIPS))
+```
+The output will be saved as an rds file format and imported back into R as follows.
+
+```{R}
+write_rds(wkd17_20_hxgn_grid, "data/rds/wkd17_20_hxgn_grid.rds")
+wkd17_20_hxgn_grid <- read_rds("data/rds/wkd17_20_hxgn_grid.rds")
+```
+
+## Objective (1): Geovisualisation and Analysis of O-D flow of Passengers during Weekday Evening Peakhour
+
+### Geovisualisation of O-D flow
+
+#### Plotting Origin Points
+
+In order to plot the origin points, the O-D Grid data is merged with hexagon grid simple feature tibble data and filtered as follows.
+
+```{R}
+wkd17_20_hxgn_grid_O_sf <- left_join(hxgn_grid_sf, 
                            wkd17_20_hxgn_grid,
                            by = c("grid_id" = "ORIGIN_GRID"))%>%
-  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+  group_by(grid_id) %>%
+  summarise(TOT_TRIPS = sum(TOT_TRIPS))
 
-wkd17_20_hxgn_grid_sf = filter(wkd17_20_hxgn_grid_sf, TOT_TRIPS > 0)
+wkd17_20_hxgn_grid_O_sf = filter(wkd17_20_hxgn_grid_O_sf, TOT_TRIPS > 0)
 ```
 
-#### Weekend/holiday morning peak
-
-Append the merged busstop_hxgn_grid frame onto odbus_wke11_14 data frame as follows.
+The distribution of Origin points in the map is as follows.
 
 ```{R}
-wke11_14_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wke11_14,
-            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
-  rename(ORIGIN_BS = BUS_STOP_N,
-         ORIGIN_GRID = grid_id) %>%
-  group_by(ORIGIN_GRID) %>%
-  reframe(
-    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
-    TOT_TRIPS = sum(TRIPS),
-    AVG_TRIPS = mean(TRIPS)
-  )
+tmap_mode("plot")
+
+tmap_options(check.and.fix = TRUE)
+
+tm_shape(mpsz) +
+  tm_polygons() +
+tm_shape(wkd17_20_hxgn_grid_O_sf) +
+  tm_fill(
+    col = c("TOT_TRIPS"),
+    palette = "Blues",
+    style = "quantile",
+    title = c("Total Passenger Trips from Origin Pt"),
+    id = "grid_id",
+    showNA = FALSE,
+    alpha = 0.6,
+    popup.vars = c(
+      "Total Trips: " = "TOT_TRIPS"
+    ),
+    popup.format = list(
+      TOT_TRIPS = list(format = "f", digits = 0)
+    )
+  ) +
+  tm_layout(main.title = "Origin Pt BusStop Passenger Trips During Weekday Evening Peak",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.height = 0.45, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
 ```
 
-As a good practice, check for duplicate records and retain duplicate records as follows.
+#### Plotting Destination Points
+
+In order to plot the destination points, the O-D Grid data is merged with hexagon grid simple feature tibble data and filtered as follows.
 
 ```{R}
-duplicate2 <- wke11_14_hxgn_grid %>%
-  group_by_all() %>%
-  filter(n()>1) %>%
-  ungroup()
+wkd17_20_hxgn_grid_D_sf <- left_join(hxgn_grid_sf, 
+                           wkd17_20_hxgn_grid,
+                           by = c("grid_id" = "DESTIN_GRID"))%>%
+  group_by(grid_id) %>%
+  summarise(TOT_TRIPS = sum(TOT_TRIPS))
 
-wke11_14_hxgn_grid <- unique(wke11_14_hxgn_grid)
+wkd17_20_hxgn_grid_D_sf = filter(wkd17_20_hxgn_grid_D_sf, TOT_TRIPS > 0)
 ```
 
-Merge resultant data with hexgon grid and filter as follows
+The distribution of Destination points in the map is as follows.
 
 ```{R}
-wke11_14_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
-                           wke11_14_hxgn_grid,
-                           by = c("grid_id" = "ORIGIN_GRID"))%>%
-  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+tmap_mode("plot")
 
-wke11_14_hxgn_grid_sf = filter(wke11_14_hxgn_grid_sf, TOT_TRIPS > 0)
+tmap_options(check.and.fix = TRUE)
+tm_shape(mpsz) +
+  tm_polygons() +
+tm_shape(wkd17_20_hxgn_grid_D_sf) +
+  tm_fill(
+    col = c("TOT_TRIPS"),
+    palette = "Reds",
+    style = "quantile",
+    title = c("Total Passenger Trips from Destination Pt"),
+    id = "grid_id",
+    showNA = FALSE,
+    alpha = 0.6,
+    popup.vars = c(
+      "Total Trips: " = "TOT_TRIPS"
+    ),
+    popup.format = list(
+      TOT_TRIPS = list(format = "f", digits = 0)
+    )
+  ) +
+  tm_layout(main.title = "Destination Pt BusStop Passenger Trips During Weekday Evening Peak",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.height = 0.45, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5)
 ```
 
-#### Weekend/holiday evening peak
+#### Plotting Desire lines
 
-Append the merged busstop_hxgn_grid frame onto odbus_wke16_19 data frame as follows.
+First the Intra-zonal flow is removed, to scope the analysis to more substantial distance of travel. Data points with Origin points same as Destination points will hence be excluded as follows.
 
 ```{R}
-wke16_19_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wke16_19,
-            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
-  rename(ORIGIN_BS = BUS_STOP_N,
-         ORIGIN_GRID = grid_id) %>%
-  group_by(ORIGIN_GRID) %>%
-  reframe(
-    MAX_TRIPS_BS = ORIGIN_BS[which.max(sum(TRIPS))],
-    TOT_TRIPS = sum(TRIPS),
-    AVG_TRIPS = mean(TRIPS)
-  )
+wkd17_20_hxgn_grid_dl <- wkd17_20_hxgn_grid[wkd17_20_hxgn_grid$ORIGIN_GRID!=wkd17_20_hxgn_grid$DESTIN_GRID,]
 ```
 
-As a good practice, check for duplicate records and retain duplicate records as follows.
+Using od2line() function of stplanr package, the data for the desire lines are created in hexagonal grid as follows.
 
 ```{R}
-duplicate3 <- wke16_19_hxgn_grid %>%
-  group_by_all() %>%
-  filter(n()>1) %>%
-  ungroup()
-
-wke16_19_hxgn_grid <- unique(wke16_19_hxgn_grid)
+flowLine <- od2line(flow = wkd17_20_hxgn_grid_dl, 
+                    zones = hxgn_grid_sf,
+                    zone_code = "grid_id")
 ```
 
-Merge resultant data with hexgon grid and filter as follows
+To determine the appropriate ranges for a meaningful geovisualisation of the O-D desire lines, the summary statistic for the flowline is obtained as follows.
 
 ```{R}
-wke16_19_hxgn_grid_sf <- left_join(hxgn_grid_sf, 
-                           wke16_19_hxgn_grid,
-                           by = c("grid_id" = "ORIGIN_GRID"))%>%
-  select(MAX_TRIPS_BS, TOT_TRIPS, AVG_TRIPS, hxgn_grid)
+summary(flowLine)
+```
+From the above, there is a significant leap between the 3rd quartile to the Maximum TOT_trips. As such, a percentile close to 100% should be chosen to minimise clutter in the geovisualisation of the O-D pairs with the busiest flow. Consequently, geovisualisation of the desire lines corresponding to the top 1 percentile of TOT_trips is thus chosen for analysis, as shown below.
 
-wke16_19_hxgn_grid_sf = filter(wke16_19_hxgn_grid_sf, TOT_TRIPS > 0)
+```{R}
+tm_shape(mpsz) +
+  tm_polygons() +
+tm_shape(busstop_hxgn_grid_sf) +
+  tm_polygons() +
+flowLine %>%  
+  filter(TOT_TRIPS >= quantile(flowLine$TOT_TRIPS, 0.99)) %>%
+tm_shape() +
+  tm_lines(lwd = "TOT_TRIPS",
+           style = "quantile",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           n = 6,
+           alpha = 0.3) +
+tm_layout(main.title = "Top 1% Busiest O-D flow During Weekday Evening Peak",
+          main.title.position = "center",
+          main.title.size = 1.1,
+          legend.height = 0.4, 
+          legend.width = 0.6,
+          frame = TRUE)
 ```
 
-### Geovisualisation of Busstop Peakhour periods
+A geovisualisation of the desire lines corresponding to the median +/- 0.5 percentile of TOT_TRIPS is as shown below.
 
-Plot the map with hexagonal grid as follows for:
+```{R}
+tm_shape(mpsz) +
+  tm_polygons(alpha = 1, col = "red") +
+tm_shape(busstop_hxgn_grid_sf) +
+  tm_polygons(alpha = 1,col = "white") +
+flowLine %>%  
+  filter(TOT_TRIPS <= quantile(flowLine$TOT_TRIPS, 0.505),TOT_TRIPS >= quantile(flowLine$TOT_TRIPS, 0.495)) %>%
+tm_shape() +
+  tm_lines(lwd = "TOT_TRIPS",
+           style = "quantile",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           n = 6,
+           alpha = 0.1,
+           col = "darkblue") +
+tm_layout(main.title = "Median +/- 0.5 percentile of Busiest O-D flow During Weekday Evening Peak",
+          main.title.position = "center",
+          main.title.size = 1.1,
+          legend.height = 0.4, 
+          legend.width = 0.6,
+          frame = TRUE)
+```
 
--   Weekday morning peak
+A geovisualisation of the desire lines corresponding to bottom 1 percentile of TOT_TRIPS is as shown below.
+
+```{R}
+tm_shape(mpsz) +
+  tm_polygons(alpha = 1, col = "red") +
+tm_shape(busstop_hxgn_grid_sf) +
+  tm_polygons(alpha = 1,col = "white") +
+flowLine %>%  
+  filter(TOT_TRIPS <= quantile(flowLine$TOT_TRIPS, 0.01)) %>%
+tm_shape() +
+  tm_lines(lwd = "TOT_TRIPS",
+           style = "quantile",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           n = 6,
+           alpha = 0.05,
+           col = "darkblue") +
+tm_layout(main.title = "Bottom 1 percentile of Busiest O-D flow During Weekday Evening Peak",
+          main.title.position = "center",
+          main.title.size = 1.1,
+          legend.height = 0.4, 
+          legend.width = 0.6,
+          frame = TRUE)
+```
+
+### Analysis of O-D flow Geovisualisation
+
+### Identification of Propulsive and Attractiveness Variables
+
+### Computation of Distance Matrix
+
+First as.Spatial() function of sp package will be used to convert hxgn_grid_sf from sf tibble data frame to SpatialPolygonsDataFrame (ie sp object) as follows.
+
+```{R}
+busstop_hxgn_grid_sp <- as(busstop_hxgn_grid_sf, "Spatial")
+busstop_hxgn_grid_sp
+```
+
+Next, spDists() of sp package is used to compute the Euclidean distance between the centroids of the hexagonal grid as follows.
+
+```{R}
+dist <- spDists(busstop_hxgn_grid_sp, 
+                longlat = FALSE)
+head(dist, n=c(10, 10))
+```
+
+A list is then created, sorted according to the the distance matrix by hexagon grid id.
+
+```{R}
+grid_names <- busstop_hxgn_grid_sp$grid_id
+```
+
+Grid_id is then attached to row and column for distance matrix matching ahead
+
+```{R}
+colnames(dist) <- paste0(grid_names)
+rownames(dist) <- paste0(grid_names)
+```
+
+The distance matrix is pivoted into a long table by using the row and column hexagon grid_id as follows.
+
+```{R}
+distPair <- melt(dist) %>%
+  rename(dist = value)
+head(distPair, 10)
+```
+
+Filtering only the non-0 distance pair to exclude intra-grid commutes and using summary(), the minimum value of the distance is obtained as follows.
+
+```{R}
+distPair %>%
+  filter(dist > 0) %>%
+  summary()
+```
+
+An arbitrary small distance value of 0.1m is used to replace existing intra-zonal distance of 0.
+
+```{R}
+distPair$dist <- ifelse(distPair$dist == 0,
+                        0.1, distPair$dist)
+```
+
+Using summary() once more, the resultant data.frame is inspected if further wrangling is required, as follows.
+
+```{R}
+distPair %>%
+  summary()
+```
+
+For clarity, the origin and destination fields are renamed as follows.
+
+```{R}
+distPair <- distPair %>%
+  rename(orig = Var1,
+         dest = Var2)
+```
+
+Lastly, the prepared O-D distance matrix in long form is saved as follows.
+
+```{R}
+write_rds(distPair, "data/rds/distPair.rds") 
+```
+
+## Objective (2): Spatial Interaction Modelling for O-D Flows of Passengers During Weekday Evening Peakhour
+
+### Formulating Spatial Interaction Models
+
+#### Preparing Flow Data & O-D attributes
+
+#### Calibrating Spatial Interaction Models
+
+### Geovisualisation and Graphical Plots of Spatial Interaction Models
+
+### Analysis of Spatial Interaction Modelling Results
+
+
+
+
+
+
