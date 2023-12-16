@@ -412,6 +412,14 @@ tm_layout(main.title = "Bottom 1 percentile of Busiest O-D flow During Weekday E
 
 ### Identification of Propulsive and Attractiveness Variables
 
+During the Weekday Evening Peak hour, it is expected that majority of the commuters in Singapore would be ending school and work, and would likely be either going home, or visiting retail and F&B locations. Since the timing stretches across 3 hours from 1700h to 2000h, it is also possible that a significant portion might also be making a second trip within the time span. Based on this, the following are likely Propulsive and Attractiveness variables:
+- Propulsive
+  - 
+
+- Attractive
+  -
+
+
 ### Computation of Distance Matrix
 
 First as.Spatial() function of sp package will be used to convert hxgn_grid_sf from sf tibble data frame to SpatialPolygonsDataFrame (ie sp object) as follows.
@@ -490,7 +498,7 @@ write_rds(distPair, "data/rds/distPair.rds")
 
 ### Formulating Spatial Interaction Models
 
-#### Preparing Flow Data & O-D attributes
+#### Preparing the Flow Data
 
 In preparation for the modelling, the intra-grid flow is separated from the rest of the flow data in the flow data.frame (ie wkd17-20_hxgn_grid), and  an offset column is created for subsequent data wrangling with the addition of 2 new columns as follows.
 
@@ -502,6 +510,114 @@ wkd17_20_hxgn_grid$offset <- ifelse(
   wkd17_20_hxgn_grid$ORIGIN_GRID == wkd17_20_hxgn_grid$DESTIN_GRID, 
   0.000001, 1)
 ```
+
+Before joining wkd17_20_hxgn_grid and distPair, data value type of ORIGIN_GRID and DESTIN_GRID variables of wkd17_20_hxgn_grid dataframe is converted into factor data type.
+
+```{R}
+wkd17_20_hxgn_grid$ORIGIN_GRID <- as.factor(wkd17_20_hxgn_grid$ORIGIN_GRID)
+wkd17_20_hxgn_grid$DESTIN_GRID <- as.factor(wkd17_20_hxgn_grid$DESTIN_GRID)
+
+distPair$orig <- as.factor(distPair$orig)
+distPair$dest <- as.factor(distPair$dest)
+```
+
+Using left_join() of dplyr, wkd17_20_hxgn_grid dataframe and distPair dataframe will be merged, with the output being named flow_data.
+
+```{R}
+flow_data <- wkd17_20_hxgn_grid %>%
+  left_join (distPair,
+             by = c("ORIGIN_GRID" = "orig",
+                    "DESTIN_GRID" = "dest"))
+```
+
+### Preparing the O-D attributes
+
+#### Origin Attributes
+
+##### Schools
+
+Geocoding is the process of taking an aspatial description of a location and returning geographic coordinates
+
+The found data will be joined with the initial csv data by using a unique identifier (i.e. POSTAL) common to both data tables. The output data table will then save as an csv file called found.
+
+```{R}
+#| eval: false
+url<-"https://www.onemap.gov.sg/api/common/elastic/search"
+
+csv<-read_csv("data/aspatial/Generalinformationofschools.csv")
+postcodes<-csv$'postal_code'
+
+found<-data.frame()
+not_found<-data.frame()
+
+for(postcode in postcodes){
+  query<-list('searchVal'=postcode, 'returnGeom'='Y', 'getAddrDetails'='Y','pageNum'='1')
+  res<- GET(url,query=query)
+  
+  if((content(res)$found)!=0){
+    found<-rbind(found,data.frame(content(res))[4:13])
+  } else{
+    not_found = data.frame(postcode)
+
+  }
+}
+```
+
+Next, combine both found and not_found data.frames into a single data.frame called merged. At the same time, write merged and not_found tibble data.fraems into csv file
+
+```{R}
+#| eval: false
+merged = merge(csv, found,by.x = 'postal_code', by.y = 'results.POSTAL', all = TRUE)
+write.csv(merged,file = "data/aspatial/schools.csv")
+write.csv(not_found,file = "data/aspatial/not_found.csv")
+```
+Importing and tidying schools data, rename latitude & longitude and retain
+
+```{R}
+schools<-read_csv("data/aspatial/schools.csv") %>%
+  rename(latitude = "results.LATITUDE",
+         longitude = "results.LONGITUDE")%>%
+  select(postal_code, school_name, latitude, longitude)
+```
+
+Convert aspatial data into a simple feature tibble data.frame called schools_sf
+
+```{R}
+schools_sf <- st_as_sf(schools,
+                       coords = c("longitude","latitude"),
+                       crs=4326) %>%
+st_transform(crs = 3414)
+```
+
+count the number of schools within each planning subzone by using appropriate sf function
+
+```{R}
+mpsz$'SCHOOL_COUNT'<-lengths(
+  st_intersects(
+    mpsz, schools_sf))
+```
+
+Good practice to examine summary stat of derived variable.
+
+compute and display summary stat of sch_count field.
+
+```{R}
+summary(mpsz$SCHOOL_COUNT)
+```
+
+```{R}
+business_sf = st_read(dsn = "data/geospatial", layer = "Business")%>%
+st_transform(crs = 3414)
+
+```
+
+```{R}
+FinServ_sf = st_read(dsn = "data/geospatial", layer = "FinServ")%>%
+st_transform(crs = 3414)
+
+```
+
+#### Destination Attributes
 
 #### Calibrating Spatial Interaction Models
 

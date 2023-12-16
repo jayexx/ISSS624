@@ -33,6 +33,8 @@ website:
             href: In-class_Exercises/In-class_Ex4/In-class_Ex4.qmd
           - text: In-class_Exercise 4 Continued
             href: In-class_Exercises/In-class_Ex4/In-class_Ex4-ctd.qmd
+          - text: In-class_Exercise 5
+            href: In-class_Exercises/In-class_Ex5/In-class_Ex5.qmd
       - text: Take-home_Exercises
         menu: 
           - text: Take-home_Exercise 1

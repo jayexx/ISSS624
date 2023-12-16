@@ -4,9 +4,7 @@ title: "In-class_Ex4: GeoSpatial Data Science with R"
 
 ## Overview
 
-Hands-on experience on the following tasks:
-- performing geocoding using data downloaded from data.gov.sg
-- calibrating Geographically Weighted Poisson Regression
+Hands-on experience on the following tasks: - performing geocoding using data downloaded from data.gov.sg - calibrating Geographically Weighted Poisson Regression
 
 ## Getting Started
 
@@ -55,9 +53,10 @@ write.csv(not_found,file = "data/aspatial/not_found.csv")
 ```
 
 ##### Do it yourself
-- Using Google map, locate the location info of the ungeocoded school (zhenghua secondary) by using its postcode.
-- Update the results.LATITUDE and results.LONGITUDE fields of the ungeocoded record in schools.csv manually
-- For Zhenghua Secondary update longlat as 1.389279, 103.7651 
+
+-   Using Google map, locate the location info of the ungeocoded school (zhenghua secondary) by using its postcode.
+-   Update the results.LATITUDE and results.LONGITUDE fields of the ungeocoded record in schools.csv manually
+-   For Zhenghua Secondary update longlat as 1.389279, 103.7651
 
 ## Converting an aspatial data into a simple feature tibble data.frame
 
@@ -87,7 +86,7 @@ st_transform(crs = 3414)
 
 To ensure schools_sf tibble data.frame has been projected and converted correctly, plot the schools point data for visual inspection.
 
-create a point symbol map showing the location of 
+create a point symbol map showing the location of
 
 ```{R}
 mpsz = st_read(dsn = "data/geospatial", layer = "MPSZ-2019")%>%
@@ -101,7 +100,6 @@ tm_shape(schools_sf) +
   tm_dots(alpha = 0.6) +
   tm_view(set.zoom.limits = c(11,14))
 ```
-
 
 ## Preparing
 
@@ -166,7 +164,7 @@ Compute summary stats of all variables as follows.
 summary(flow_data)
 ```
 
-report above reveals that all of the variables have a min >0
+report above reveals that all of the variables have a min \>0
 
 If required the following examnple code can be used to replace with 0.99
 
@@ -175,6 +173,3 @@ flow_data$SCHOOL_COUNT <- ifelse(
   flow_data$SCHOOL_COUNT == 0,
   0.99, flow_data$SCHOOL_COUNT)
 ```
-
-
-
