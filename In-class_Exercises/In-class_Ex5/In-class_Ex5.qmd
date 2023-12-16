@@ -159,7 +159,7 @@ base_model <- spflow(
 base_model
 ```
 ```{R}
-par(old_par)
+#par(old_par)
 ```
 
 
