@@ -36,10 +36,7 @@ mpsz <- st_read(dsn = "data/geospatial",
 
 ### Converting from sf data.table to SpatialPolygonsDataFrame
 
-At least two ways to compute the required distance matrix.
-1. Based on sf 
-2. Based on sp. 
-From past experience, computing distance matrix by using sf function takes relatively longer than sp method especially if data set is large. In view of this, sp method is used as follows.
+At least two ways to compute the required distance matrix. 1. Based on sf 2. Based on sp. From past experience, computing distance matrix by using sf function takes relatively longer than sp method especially if data set is large. In view of this, sp method is used as follows.
 
 ```{R}
 mpsz_sp <- as(mpsz, "Spatial")
@@ -55,7 +52,9 @@ dist <- spDists(mpsz_sp,
                 longlat = FALSE)
 head(dist, n=c(10, 10))
 ```
+
 ##### Q&A
+
 Do you know why the distance is calculated between two centroids of a pair of spatial polygons?
 
 ### Labelling column and row heanders of a distance matrix
@@ -82,8 +81,8 @@ distPair <- melt(dist) %>%
   rename(dist = value)
 head(distPair, 10)
 ```
-Notice that the same-zone distance is 0
 
+Notice that the same-zone distance is 0
 
 ### Updating intra-zonal distances
 
@@ -96,6 +95,7 @@ distPair %>%
   filter(dist > 0) %>%
   summary()
 ```
+
 constant distance value of 50m is added into intra-zones distance
 
 ```{R}
@@ -126,7 +126,7 @@ write_rds(distPair, "data/rds/distPair.rds")
 
 ## Flow Data
 
-import od_data 
+import od_data
 
 ```{R}
 od_data <- read_rds("data/rds/od_data.rds")
@@ -140,7 +140,7 @@ flow_data <- od_data %>%
   summarize(TRIPS = sum(MORNING_PEAK)) 
 ```
 
- display flow_data dataframe
+display flow_data dataframe
 
 ```{R}
 head(flow_data, 10)
@@ -398,7 +398,7 @@ In this section, we will fit a doubly constrained SIM by using the code chunk be
 
 The general formula of Doubly Constrained Spatial Interaction Model
 
-**lambda_ij = exp(k + mu_i  + alpha_i - Beta ln d_ij)**
+**lambda_ij = exp(k + mu_i + alpha_i - Beta ln d_ij)**
 
 ```{R}
 dbcSIM <- glm(formula = TRIPS ~ 
@@ -526,8 +526,3 @@ ggarrange(unc_p, orc_p, dec_p, dbc_p,
           ncol = 2,
           nrow = 2)
 ```
-
-
-
-
-

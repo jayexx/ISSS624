@@ -82,7 +82,7 @@ Using the glimpse() function, the structure of busstop sf tibble data frame is a
 glimpse(busstop)
 ```
 
-The geospatial data for the Singapore Master Plan Subzone 2019 data downloaded from data.gov.sg is also imported and save it as a sf data frame named mpsz, similarly in projected coordinate system.
+The geospatial data for the Singapore Master Plan Subzone 2019 data downloaded from data.gov.sg is also imported and saved as a sf data frame named mpsz, similarly in projected coordinate system.
 
 ```{R}
 mpsz <- st_read(dsn = "data/geospatial",layer ="MPSZ-2019") %>%
@@ -98,11 +98,9 @@ hxgn_grid = st_make_grid(mpsz, c(375, 375), what = "polygons", square = FALSE)
 # To sf and add grid ID
 hxgn_grid_sf = st_sf(hxgn_grid) %>%
   mutate(grid_id = 1:length(lengths(hxgn_grid)))
+hxgn_grid_sf$grid_id <- as.factor(hxgn_grid_sf$grid_id)
 ```
-
-In the above, the hexagonal grid size is chosen to be 375m by 375m is based on the assumption that the maximum willingness of an average commuter to walk being 375m*2 which is 750m. 
-
-### Merging Hexagonal Grid with Busstop Geospatial data
+In the above, the hexagonal grid size chosen to be 375m by 375m is based on the assumption that the maximum willingness of an average commuter to walk being 375m*2 which is 750m. 
 
 Imported busstop data is merged with Hexagonal grid as follows.
 
@@ -133,11 +131,16 @@ busstop_hxgn_grid data is re-merged with sf tibble data and converted to sf obje
 busstop_hxgn_grid_sf <- left_join(busstop_hxgn_grid, 
                            hxgn_grid_sf,
                            by = c("grid_id" = "grid_id"))%>%
-  select(BUS_STOP_N, grid_id, hxgn_grid) %>%
+  select(grid_id, hxgn_grid) %>%
   st_sf()
 
+busstop_hxgn_grid_sf <- unique(busstop_hxgn_grid_sf)
+
+tm_shape(mpsz) +
+  tm_polygons() +
 tm_shape(busstop_hxgn_grid_sf) + 
-  tm_polygons()
+  tm_polygons(col = "red")
+  
 ```
 
 ### Extracting the passenger trips for Weekday Evening Peakhour
@@ -166,9 +169,9 @@ odbus_wkd17_20 <- read_rds("data/rds/odbus_wkd17_20.rds")
 The merged busstop_hxgn_grid frame is then appended onto odbus_wkd17_20 data frame as follows.
 
 ```{R}
-wkd17_20_hxgn_grid <- left_join(busstop_hxgn_grid, odbus_wkd17_20,
-            by = c("BUS_STOP_N" = "ORIGIN_PT_CODE")) %>%
-  rename(ORIGIN_BS = BUS_STOP_N,
+wkd17_20_hxgn_grid <- left_join(odbus_wkd17_20, busstop_hxgn_grid, 
+            by = c("ORIGIN_PT_CODE" = "BUS_STOP_N")) %>%
+  rename(ORIGIN_BS = ORIGIN_PT_CODE,
          ORIGIN_GRID = grid_id,
          DESTIN_BS = DESTINATION_PT_CODE)
 ```
@@ -187,8 +190,8 @@ wkd17_20_hxgn_grid <- unique(wkd17_20_hxgn_grid)
 Repeat the same steps to obtain the DESTIN_GRID by joining with busstop_hxgn_grid once more as follows
 
 ```{R}
-wkd17_20_hxgn_grid <- left_join(busstop_hxgn_grid, wkd17_20_hxgn_grid,
-            by = c("BUS_STOP_N" = "DESTIN_BS"))
+wkd17_20_hxgn_grid <- left_join(wkd17_20_hxgn_grid, busstop_hxgn_grid, 
+            by = c("DESTIN_BS" = "BUS_STOP_N"))
 ```
 
 
@@ -221,11 +224,12 @@ wkd17_20_hxgn_grid <- read_rds("data/rds/wkd17_20_hxgn_grid.rds")
 
 ### Geovisualisation of O-D flow
 
-#### Plotting Origin Points
+#### Plotting Origin & Destination Points
 
 In order to plot the origin points, the O-D Grid data is merged with hexagon grid simple feature tibble data and filtered as follows.
 
 ```{R}
+#| eval: false
 wkd17_20_hxgn_grid_O_sf <- left_join(hxgn_grid_sf, 
                            wkd17_20_hxgn_grid,
                            by = c("grid_id" = "ORIGIN_GRID"))%>%
@@ -235,11 +239,23 @@ wkd17_20_hxgn_grid_O_sf <- left_join(hxgn_grid_sf,
 wkd17_20_hxgn_grid_O_sf = filter(wkd17_20_hxgn_grid_O_sf, TOT_TRIPS > 0)
 ```
 
-The distribution of Origin points in the map is as follows.
+Similarly, to plot the destination points, the O-D Grid data is merged with hexagon grid simple feature tibble data and filtered as follows.
+
+```{R}
+#| eval: false
+wkd17_20_hxgn_grid_D_sf <- left_join(hxgn_grid_sf, 
+                           wkd17_20_hxgn_grid,
+                           by = c("grid_id" = "DESTIN_GRID"))%>%
+  group_by(grid_id) %>%
+  summarise(TOT_TRIPS = sum(TOT_TRIPS))
+
+wkd17_20_hxgn_grid_D_sf = filter(wkd17_20_hxgn_grid_D_sf, TOT_TRIPS > 0)
+```
+
+The distribution of Origin & Destination points in the map are as follows.
 
 ```{R}
 tmap_mode("plot")
-
 tmap_options(check.and.fix = TRUE)
 
 tm_shape(mpsz) +
@@ -252,7 +268,7 @@ tm_shape(wkd17_20_hxgn_grid_O_sf) +
     title = c("Total Passenger Trips from Origin Pt"),
     id = "grid_id",
     showNA = FALSE,
-    alpha = 0.6,
+    alpha = 0.9,
     popup.vars = c(
       "Total Trips: " = "TOT_TRIPS"
     ),
@@ -267,28 +283,8 @@ tm_shape(wkd17_20_hxgn_grid_O_sf) +
             legend.width = 0.35,
             frame = TRUE) +
   tm_borders(alpha = 0.5)
-```
 
-#### Plotting Destination Points
 
-In order to plot the destination points, the O-D Grid data is merged with hexagon grid simple feature tibble data and filtered as follows.
-
-```{R}
-wkd17_20_hxgn_grid_D_sf <- left_join(hxgn_grid_sf, 
-                           wkd17_20_hxgn_grid,
-                           by = c("grid_id" = "DESTIN_GRID"))%>%
-  group_by(grid_id) %>%
-  summarise(TOT_TRIPS = sum(TOT_TRIPS))
-
-wkd17_20_hxgn_grid_D_sf = filter(wkd17_20_hxgn_grid_D_sf, TOT_TRIPS > 0)
-```
-
-The distribution of Destination points in the map is as follows.
-
-```{R}
-tmap_mode("plot")
-
-tmap_options(check.and.fix = TRUE)
 tm_shape(mpsz) +
   tm_polygons() +
 tm_shape(wkd17_20_hxgn_grid_D_sf) +
@@ -296,10 +292,10 @@ tm_shape(wkd17_20_hxgn_grid_D_sf) +
     col = c("TOT_TRIPS"),
     palette = "Reds",
     style = "quantile",
-    title = c("Total Passenger Trips from Destination Pt"),
+    title = c("Total Passenger Trips to Destination Pt"),
     id = "grid_id",
     showNA = FALSE,
-    alpha = 0.6,
+    alpha = 0.9,
     popup.vars = c(
       "Total Trips: " = "TOT_TRIPS"
     ),
@@ -351,7 +347,8 @@ tm_shape() +
            style = "quantile",
            scale = c(0.1, 1, 3, 5, 7, 10),
            n = 6,
-           alpha = 0.3) +
+           alpha = 0.3,
+           col = "blue") +
 tm_layout(main.title = "Top 1% Busiest O-D flow During Weekday Evening Peak",
           main.title.position = "center",
           main.title.size = 1.1,
@@ -410,19 +407,30 @@ tm_layout(main.title = "Bottom 1 percentile of Busiest O-D flow During Weekday E
 
 ### Analysis of O-D flow Geovisualisation
 
+From the comparison of the plots of Origin points against Destination points, it can be observed that the spread of distribution became more concentrated on a relatively smaller bus stops from Origin to Destination.
+
+From the Busiest 1% of O-D flow lines, it can be observed that the busiest O-D flow lines were involved the bus interchanges. In particular, woodlands interchange and bus stops at the causeway were notably the busiest, where the larger majority of these O-D pairs were with the bus stops in Eastern Singapore- Tampines and Pasir Ris bus interchange, while a smaller majority were with bus stops in Northwestern Singapore in the Choa chu kang interchange. In Western Singapore, the busier flow lines centred around Boon lay followed by Jurong east districts, with shorter trips within the same district. In Eastern Singapore the busier flow lines centred around Bedok and Tampines districts, where trips tended to be from the northern sectors like woodlands or Sengkang districts. In central Singapore, the busier flow lines were centred around the Bishan and Ang Mo Kio districts.
+
+The median busy O-D flow lines were generally distributed within the central and eastern Singapore, whereas the least busy O-D flow lines are evenly spread across all districts of Singapore.
+
 ### Identification of Propulsive and Attractiveness Variables
 
-During the Weekday Evening Peak hour, it is expected that majority of the commuters in Singapore would be ending school and work, and would likely be either going home, or visiting retail and F&B locations. Since the timing stretches across 3 hours from 1700h to 2000h, it is also possible that a significant portion might also be making a second trip within the time span. Based on this, the following are likely Propulsive and Attractiveness variables:
-- Propulsive
-  - 
+During the Weekday Evening Peak hour, it is expected that majority of the commuters in Singapore would be ending work, and would likely be either going home, or visiting retail and F&B locations. However, since the timing stretches across 3 hours from 1700h to 2000h, it is also possible that a significant portion might also be making a second trip within the time span. Based on this, the following are likely Propulsive and Attractiveness variables:
 
-- Attractive
-  -
+- Propulsive Variables-
+  - **Count of Businesses within Polygon** to consider the workplace of a significant proportion of the population
+  - **Count of Residential dwelling units within Polygon** to consider a significant proportion of the population working or studying from home
+  - **Count of Financial Services within Polygon** to consider the workplace of a significant proportion of the population
+
+- Attractiveness Variables-
+  - **Count of Retail Services within Polygon** to consider the post-work activity a significant proportion of the population
+  - **Count of F&B count within Polygon** to consider dinner time within that time period
+  - **Count of Residential dwelling units within Polygon** to consider a significant proportion of the population returning home after school, work or post-work activity
 
 
 ### Computation of Distance Matrix
 
-First as.Spatial() function of sp package will be used to convert hxgn_grid_sf from sf tibble data frame to SpatialPolygonsDataFrame (ie sp object) as follows.
+First as.Spatial() function of sp package will be used to convert hxgn_grid_sf from sf tibble data frame to SpatialPolygonsDataFrame (ie sf to sp object class) to utilise other functions within sp package subsequently to compute the O-D distance matrix as follows.
 
 ```{R}
 busstop_hxgn_grid_sp <- as(busstop_hxgn_grid_sf, "Spatial")
@@ -436,8 +444,7 @@ dist <- spDists(busstop_hxgn_grid_sp,
                 longlat = FALSE)
 head(dist, n=c(10, 10))
 ```
-
-A list is then created, sorted according to the the distance matrix by hexagon grid id.
+To represent the above O-D distance matrix in a data.frame, a list is created with the hexagon grid_id, sorted according to the distance matrix, and represented as factor data type as follows.
 
 ```{R}
 grid_names <- busstop_hxgn_grid_sp$grid_id
@@ -480,15 +487,23 @@ distPair %>%
   summary()
 ```
 
-For clarity, the origin and destination fields are renamed as follows.
+For clarity and subsequent analysis, the origin and destination fields are renamed and converted to Factor data type as follows.
 
 ```{R}
 distPair <- distPair %>%
   rename(orig = Var1,
          dest = Var2)
+distPair$orig <- as.factor(distPair$orig)
+distPair$dest <- as.factor(distPair$dest)
 ```
 
-Lastly, the prepared O-D distance matrix in long form is saved as follows.
+Duplicates are then removed as follows.
+
+```{R}
+distPair <- unique(distPair)
+```
+
+Lastly, the prepared O-D distance matrix in long form is saved as a rds file as follows.
 
 ```{R}
 write_rds(distPair, "data/rds/distPair.rds") 
@@ -498,133 +513,431 @@ write_rds(distPair, "data/rds/distPair.rds")
 
 ### Formulating Spatial Interaction Models
 
-#### Preparing the Flow Data
+#### Preparing the Base Flow Data
 
 In preparation for the modelling, the intra-grid flow is separated from the rest of the flow data in the flow data.frame (ie wkd17-20_hxgn_grid), and  an offset column is created for subsequent data wrangling with the addition of 2 new columns as follows.
 
 ```{R}
-wkd17_20_hxgn_grid$FlowNoIntra <- ifelse(
-  wkd17_20_hxgn_grid$ORIGIN_GRID == wkd17_20_hxgn_grid$DESTIN_GRID, 
-  0, wkd17_20_hxgn_grid$TOT_TRIPS)
-wkd17_20_hxgn_grid$offset <- ifelse(
-  wkd17_20_hxgn_grid$ORIGIN_GRID == wkd17_20_hxgn_grid$DESTIN_GRID, 
-  0.000001, 1)
+flowdata <- wkd17_20_hxgn_grid
+flowdata$FlowNoIntra <- ifelse(
+  flowdata$ORIGIN_GRID == flowdata$DESTIN_GRID, 
+  0, flowdata$TOT_TRIPS)
 ```
 
-Before joining wkd17_20_hxgn_grid and distPair, data value type of ORIGIN_GRID and DESTIN_GRID variables of wkd17_20_hxgn_grid dataframe is converted into factor data type.
+inter-zonal flow will be selected from flow_data and save into a new output data.frame called inter_zonal_flow by using the code chunk below.
 
 ```{R}
-wkd17_20_hxgn_grid$ORIGIN_GRID <- as.factor(wkd17_20_hxgn_grid$ORIGIN_GRID)
-wkd17_20_hxgn_grid$DESTIN_GRID <- as.factor(wkd17_20_hxgn_grid$DESTIN_GRID)
-
-distPair$orig <- as.factor(distPair$orig)
-distPair$dest <- as.factor(distPair$dest)
+flowdata <- flowdata %>%
+  filter(FlowNoIntra > 0)
 ```
 
-Using left_join() of dplyr, wkd17_20_hxgn_grid dataframe and distPair dataframe will be merged, with the output being named flow_data.
+Before joining flowdata and distPair, data value type of ORIGIN_GRID and DESTIN_GRID variables of flowdata dataframe is converted into factor data type.
 
 ```{R}
-flow_data <- wkd17_20_hxgn_grid %>%
+flowdata$ORIGIN_GRID <- as.factor(flowdata$ORIGIN_GRID)
+flowdata$DESTIN_GRID <- as.factor(flowdata$DESTIN_GRID)
+```
+
+Using left_join() of dplyr, flowdata dataframe and distPair dataframe will be merged, with the output being named flow_data.
+
+```{R}
+flow_data <- flowdata %>%
   left_join (distPair,
              by = c("ORIGIN_GRID" = "orig",
-                    "DESTIN_GRID" = "dest"))
+                    "DESTIN_GRID" = "dest")) %>%
+  select(ORIGIN_GRID, DESTIN_GRID, TOT_TRIPS, dist)
 ```
 
-### Preparing the O-D attributes
+#### Preparing the O-D attributes from Propulsive & Attractiveness Variables
 
-#### Origin Attributes
+##### Origin Attributes based on Propulsive Variables
 
-##### Schools
-
-Geocoding is the process of taking an aspatial description of a location and returning geographic coordinates
-
-The found data will be joined with the initial csv data by using a unique identifier (i.e. POSTAL) common to both data tables. The output data table will then save as an csv file called found.
+An intermediary data set for Propulsive variables that relate to the origin attributes is created for subsequent wrangling and merger into the base flow data.
 
 ```{R}
-#| eval: false
-url<-"https://www.onemap.gov.sg/api/common/elastic/search"
+var_prop <- busstop_hxgn_grid_sf
+```
 
-csv<-read_csv("data/aspatial/Generalinformationofschools.csv")
-postcodes<-csv$'postal_code'
+###### Business & Financial Services
 
-found<-data.frame()
-not_found<-data.frame()
+Import & inspect the Businesses and Financial Services Geopatial data sets, provided as part of Take-home Exercise data files.
 
-for(postcode in postcodes){
-  query<-list('searchVal'=postcode, 'returnGeom'='Y', 'getAddrDetails'='Y','pageNum'='1')
-  res<- GET(url,query=query)
+```{R}
+biz_sf = st_read(dsn = "data/geospatial", layer = "Business")%>%
+st_transform(crs = 3414)
+
+finserv_sf = st_read(dsn = "data/geospatial", layer = "FinServ")%>%
+st_transform(crs = 3414)
+
+tm_shape(mpsz) +
+  tm_polygons() +
+  tm_shape(biz_sf) +
+  tm_dots(col = "blue")
+
+tm_shape(mpsz) +
+  tm_polygons() +
+  tm_shape(finserv_sf) +
+  tm_dots(col = "red")
+```
+
+Add count of Businesses and Financial Services to the interim data set for propulsive variables
+
+```{R}
+var_prop$O_Biz_count <- lengths(st_intersects(var_prop, biz_sf))
+var_prop$O_Finserv_count <- lengths(st_intersects(var_prop, finserv_sf))
+```
+
+###### Residential HDB Dwelling Units
+
+Import and inspect the HDB Aspatial data set, provided as part of Take-home Exercise data files.
+
+```{R}
+hdb <- read_csv("data/aspatial/hdb.csv")
+glimpse(hdb)
+```
+
+Formulate the sf data from the longitutde and latitude variables for each row, filter for residential HDB blocks and inspect the distribution of residential HDB blocks.
+
+```{R}
+hdb_sf <- hdb %>% 
+  st_as_sf(coords = c("lng", "lat"), crs = 4326) %>%
+  st_transform(crs = 3414) %>%
+  filter(residential == "Y")
+
+tm_shape(mpsz) +
+  tm_polygons() +
+  tm_shape(hdb_sf) +
+  tm_dots(col = "blue")
+```
+
+Derive the data set for the count of residential HDB dwelling units for each grid and merge the count into the interim propulsive variables data set (ie var_prop).
+
+```{R}
+hdb_dwelling_count <- st_intersection(hdb_sf, var_prop) %>%
+      select(total_dwelling_units, grid_id) %>%
+      st_drop_geometry()%>%
+      group_by(grid_id) %>%
+      summarise(O_hdb_dwelling_count = sum(total_dwelling_units))
+
+var_prop <- var_prop %>%
+  left_join(hdb_dwelling_count,
+             by = c("grid_id" = "grid_id"))%>%
+  st_drop_geometry()
+
+glimpse(var_prop)
+
+```
+
+```{R}
+var_prop <- unique(var_prop)
+```
+
+##### Destination Attributesbased on Attractiveness Variables
+
+An intermediary data set for Attractiveness variables that relate to the origin attributes is created for subsequent wrangling and merger into the base flow data.
+
+```{R}
+var_att <- busstop_hxgn_grid_sf
+```
+
+###### F&B & Retail Services
+
+Import & inspect the Food & Beverage (F&B) and Retail Services Geopatial data sets, provided as part of Take-home Exercise data files.
+
+```{R}
+FB_sf = st_read(dsn = "data/geospatial", layer = "F&B")%>%
+st_transform(crs = 3414)
+
+Retail_sf = st_read(dsn = "data/geospatial", layer = "Retails")%>%
+st_transform(crs = 3414)
+
+tm_shape(mpsz) +
+  tm_polygons() +
+  tm_shape(FB_sf) +
+  tm_dots(col = "blue")
+
+tm_shape(mpsz) +
+  tm_polygons() +
+  tm_shape(Retail_sf) +
+  tm_dots(col = "red")
+```
+
+Add count of Food & Beverage (F&B) and Retail Services to the interim data set for Attractiveness variables
+
+```{R}
+var_att$D_FB_count <- lengths(st_intersects(var_att, FB_sf))
+var_att$D_Retail_count <- lengths(st_intersects(var_att, Retail_sf))
+```
+
+###### Residential HDB Dwelling Units
+
+Similarly, merge the count of residential HDB dwelling units for each grid into the interim Attractiveness variables data set (ie var_att).
+
+```{R}
+var_att <- var_att %>%
+  left_join(hdb_dwelling_count,
+             by = c("grid_id" = "grid_id")) %>%
+  rename(D_hdb_dwelling_count = O_hdb_dwelling_count)%>%
+  st_drop_geometry()
+
+glimpse(var_att)
+
+```
+
+#### Preparation and Combining O-D Attributes with flow data
+
+Merging O-D attributes with base flow data
+
+```{R}
+flow_data <- flow_data %>%
+  left_join(var_prop,
+             by = c("ORIGIN_GRID" = "grid_id"))
+
+flow_data <- flow_data %>%
+  left_join(var_att,
+             by = c("DESTIN_GRID" = "grid_id"))
+
+summary(flow_data)
+
+```
+The print report above reveals that variables O_Biz_count, O_Finserv_count, D_FB_count, D_Retail_count, consist of 0 values, while O_hdb_dwelling_count and D_hdb_dwelling_count consist of NA values. These values will impede the subsequent modelling and analysis of the O-D attributes
+
+As such, the zero and NA values will be replaced with a value of 0.1 as follows.
+
+```{R}
+flow_data$O_Biz_count <- ifelse(
+  flow_data$O_Biz_count == 0,
+  0.1, flow_data$O_Biz_count)
+flow_data$O_Finserv_count <- ifelse(
+  flow_data$O_Finserv_count == 0,
+  0.1, flow_data$O_Finserv_count)
+flow_data$D_FB_count <- ifelse(
+  flow_data$D_FB_count == 0,
+  0.1, flow_data$D_FB_count)
+flow_data$D_Retail_count <- ifelse(
+  flow_data$D_Retail_count == 0,
+  0.1, flow_data$D_Retail_count)
   
-  if((content(res)$found)!=0){
-    found<-rbind(found,data.frame(content(res))[4:13])
-  } else{
-    not_found = data.frame(postcode)
+  
+flow_data$O_hdb_dwelling_count <- ifelse(is.na(flow_data$O_hdb_dwelling_count), 0.1, flow_data$O_hdb_dwelling_count)
+flow_data$D_hdb_dwelling_count <- ifelse(is.na(flow_data$D_hdb_dwelling_count), 0.1, flow_data$D_hdb_dwelling_count)
 
-  }
-}
+summary(flow_data)
 ```
-
-Next, combine both found and not_found data.frames into a single data.frame called merged. At the same time, write merged and not_found tibble data.fraems into csv file
+From the above, there are no longer 0 or NA values, and as such the flow data is saved as an rds file follows.
 
 ```{R}
-#| eval: false
-merged = merge(csv, found,by.x = 'postal_code', by.y = 'results.POSTAL', all = TRUE)
-write.csv(merged,file = "data/aspatial/schools.csv")
-write.csv(not_found,file = "data/aspatial/not_found.csv")
+write_rds(flow_data,
+          "data/rds/flow_data_tidy.rds")
 ```
-Importing and tidying schools data, rename latitude & longitude and retain
-
-```{R}
-schools<-read_csv("data/aspatial/schools.csv") %>%
-  rename(latitude = "results.LATITUDE",
-         longitude = "results.LONGITUDE")%>%
-  select(postal_code, school_name, latitude, longitude)
-```
-
-Convert aspatial data into a simple feature tibble data.frame called schools_sf
-
-```{R}
-schools_sf <- st_as_sf(schools,
-                       coords = c("longitude","latitude"),
-                       crs=4326) %>%
-st_transform(crs = 3414)
-```
-
-count the number of schools within each planning subzone by using appropriate sf function
-
-```{R}
-mpsz$'SCHOOL_COUNT'<-lengths(
-  st_intersects(
-    mpsz, schools_sf))
-```
-
-Good practice to examine summary stat of derived variable.
-
-compute and display summary stat of sch_count field.
-
-```{R}
-summary(mpsz$SCHOOL_COUNT)
-```
-
-```{R}
-business_sf = st_read(dsn = "data/geospatial", layer = "Business")%>%
-st_transform(crs = 3414)
-
-```
-
-```{R}
-FinServ_sf = st_read(dsn = "data/geospatial", layer = "FinServ")%>%
-st_transform(crs = 3414)
-
-```
-
-#### Destination Attributes
 
 #### Calibrating Spatial Interaction Models
 
+##### Unconstrained Spatial Interaction Models
+
+The general formula of Unconstrained Spatial Interaction Model is:
+
+**lambda_ij = exp(k + mu ln V_i + alpha ln W_j - Beta ln d_ij)**
+
+Using the glm() function, the results applying the abovementioned formula is obtained as follows.
+
+```{R}
+uncSIM <- glm(formula = TOT_TRIPS ~ 
+                log(O_Biz_count) + 
+                log(O_Finserv_count) +
+                log(O_hdb_dwelling_count) +
+                log(D_FB_count) +
+                log(D_Retail_count) +
+                log(D_hdb_dwelling_count) +
+                log(dist),
+              family = poisson(link = "log"),
+              data = flow_data,
+              na.action = na.exclude)
+uncSIM
+```
+
+##### Origin Constrained Spatial Interaction Models
+
+The general formula of Unconstrained Spatial Interaction Model is:
+
+**lambda_ij = exp(k + mu + alpha ln W_j - Beta ln d_ij)**
+
+Using the glm() function, the results applying the abovementioned formula is obtained as follows.
+
+```{R}
+orcSIM <- glm(formula = TOT_TRIPS ~ 
+                 ORIGIN_GRID + 
+                log(D_FB_count) +
+                log(D_Retail_count) +
+                log(D_hdb_dwelling_count) +
+                log(dist),
+              family = poisson(link = "log"),
+              data = flow_data,
+              na.action = na.exclude)
+```
+
+##### Destination Constrained Spatial Interaction Models
+
+The general formula of Unconstrained Spatial Interaction Model is:
+
+**lambda_ij = exp(k + mu ln V_i + alpha_i - Beta ln d_ij)**
+
+Using the glm() function, the results applying the abovementioned formula is obtained as follows.
+
+```{R}
+decSIM <- glm(formula = TOT_TRIPS ~ 
+                DESTIN_GRID + 
+                log(O_Biz_count) + 
+                log(O_Finserv_count) +
+                log(O_hdb_dwelling_count) +
+                log(dist),
+              family = poisson(link = "log"),
+              data = flow_data,
+              na.action = na.exclude)
+```
+
+##### Doubly Constrained Spatial Interaction Models
+
+The general formula of Unconstrained Spatial Interaction Model is:
+
+**lambda_ij = exp(k + mu_i + alpha_i - Beta ln d_ij)**
+
+Using the glm() function, the results applying the above-mentioned formula is obtained as follows.
+
+```{R}
+dbcSIM <- glm(formula = TOT_TRIPS ~ 
+                ORIGIN_GRID + 
+                DESTIN_GRID +  
+                log(O_Biz_count) + 
+                log(O_Finserv_count) +
+                log(O_hdb_dwelling_count) +
+                log(D_FB_count) +
+                log(D_Retail_count) +
+                log(D_hdb_dwelling_count) +
+                log(dist),
+              family = poisson(link = "log"),
+              data = flow_data,
+              na.action = na.exclude)
+```
+
+##### Model Comparison
+
+As a means for comparison of the accuracy of each of the four models, the Root Mean Squared Error (RMSE) can be used to determine the margin of error between the predicted and actual values for each model, for which the lower the error, the more accurate the model is.
+
+To perform a comparison across the 4 models, a list of the models is first compiled as follows.
+
+```{R}
+model_list <- list(unconstrained=uncSIM,
+                   originConstrained=orcSIM,
+                   destinationConstrained=decSIM,
+                   doublyConstrained=dbcSIM)
+```
+
+Using the compare_performance() of performance package, the RMSE for the 4 models is computed as follows.
+
+```{R}
+compare_performance(model_list,
+                    metrics = "RMSE")
+```
+
+In addition to RMSE, a comparison of the R-squared value of each model can also reveal the proportion of the dependent value (ie TOT_TRIPS) that can be accounted for using each model, for which the higher the R-squared value, the more accurate the model.
+
+A function is first defined to derive the R-squared value as follows.
+
+```{R}
+CalcRSquared <- function(observed,estimated){
+  r <- cor(observed,estimated)
+  R2 <- r^2
+  R2
+}
+```
+
+The results are computed and tabulated for the 4 models in a data frame as follows.
+
+```{R}
+data.frame(
+  Method = c("Unconstrained", "Origin Constrained", "Destination Constrained", "Doubly Constrained"),
+  R_squared = c(CalcRSquared(uncSIM$data$TOT_TRIPS, uncSIM$fitted.values), 
+                CalcRSquared(orcSIM$data$TOT_TRIPS, orcSIM$fitted.values), 
+                CalcRSquared(decSIM$data$TOT_TRIPS, decSIM$fitted.values), 
+                CalcRSquared(dbcSIM$data$TOT_TRIPS, dbcSIM$fitted.values))
+)
+```
+
 ### Geovisualisation and Graphical Plots of Spatial Interaction Models
+
+To plot the actual values against the predicted values for each of the 4 models, the fitted values from each model is first extracted as follows.
+
+```{R}
+df <- as.data.frame(uncSIM$fitted.values) %>%
+  round(digits = 0)
+
+df <- as.data.frame(orcSIM$fitted.values) %>%
+  round(digits = 0)
+
+df <- as.data.frame(decSIM$fitted.values) %>%
+  round(digits = 0)
+
+df <- as.data.frame(dbcSIM$fitted.values) %>%
+  round(digits = 0)
+
+```
+
+The values are then appended and renamed in the earlier flow data set.
+
+```{R}
+flow_data <- flow_data %>%
+  cbind(df) %>%
+  rename(uncTRIPS = "uncSIM$fitted.values")
+
+flow_data <- flow_data %>%
+  cbind(df) %>%
+  rename(orcTRIPS = "orcSIM$fitted.values")
+
+flow_data <- flow_data %>%
+  cbind(df) %>%
+  rename(decTRIPS = "decSIM$fitted.values")
+
+flow_data <- flow_data %>%
+  cbind(df) %>%
+  rename(dbcTRIPS = "dbcSIM$fitted.values")
+```
+
+Using ggplot(), the selected variables in the flow data set is then plotted as follows.
+
+```{R}
+unc_p <- ggplot(data = flow_data,
+                aes(x = uncTRIPS,
+                    y = TOT_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm)
+
+orc_p <- ggplot(data = flow_data,
+                aes(x = orcTRIPS,
+                    y = TOT_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm)
+
+dec_p <- ggplot(data = flow_data,
+                aes(x = decTRIPS,
+                    y = TOT_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm)
+
+dbc_p <- ggplot(data = flow_data,
+                aes(x = dbcTRIPS,
+                    y = TOT_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm)
+
+ggarrange(unc_p, orc_p, dec_p, dbc_p,
+          ncol = 2,
+          nrow = 2)
+```
 
 ### Analysis of Spatial Interaction Modelling Results
 
+Based on the results comparing the four models, it can be observed that the doubly constrained model was the most accurate model in terms or RMSE and R-squared values.
 
 
 
