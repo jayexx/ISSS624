@@ -33,7 +33,7 @@ The code chunk below load the following packages:
 -   plotly: for interactive plots
 
 ```{r}
-pacman::p_load(tmap, sf, sp, tidyverse, knitr,  reshape2, stplanr) # plotly, zoo, Kendall,sfdep,spdep,
+pacman::p_load(tmap, sf, sp, tidyverse, knitr,  reshape2, stplanr, performance, DT, ggpubr) 
 ```
 
 ## Importing and preparing the Base Geospatial and Aspatial Data
@@ -237,6 +237,12 @@ wkd17_20_hxgn_grid_O_sf <- left_join(hxgn_grid_sf,
   summarise(TOT_TRIPS = sum(TOT_TRIPS))
 
 wkd17_20_hxgn_grid_O_sf = filter(wkd17_20_hxgn_grid_O_sf, TOT_TRIPS > 0)
+write_rds(wkd17_20_hxgn_grid_O_sf, "data/rds/wkd17_20_hxgn_grid_O_sf.rds")
+```
+
+
+```{R}
+wkd17_20_hxgn_grid_O_sf  <- read_rds("data/rds/wkd17_20_hxgn_grid_O_sf.rds")
 ```
 
 Similarly, to plot the destination points, the O-D Grid data is merged with hexagon grid simple feature tibble data and filtered as follows.
@@ -250,6 +256,11 @@ wkd17_20_hxgn_grid_D_sf <- left_join(hxgn_grid_sf,
   summarise(TOT_TRIPS = sum(TOT_TRIPS))
 
 wkd17_20_hxgn_grid_D_sf = filter(wkd17_20_hxgn_grid_D_sf, TOT_TRIPS > 0)
+write_rds(wkd17_20_hxgn_grid_D_sf, "data/rds/wkd17_20_hxgn_grid_D_sf.rds ")
+```
+
+```{R}
+wkd17_20_hxgn_grid_D_sf  <- read_rds("data/rds/wkd17_20_hxgn_grid_D_sf.rds")
 ```
 
 The distribution of Origin & Destination points in the map are as follows.
@@ -742,6 +753,7 @@ The general formula of Unconstrained Spatial Interaction Model is:
 Using the glm() function, the results applying the abovementioned formula is obtained as follows.
 
 ```{R}
+#| eval: false
 uncSIM <- glm(formula = TOT_TRIPS ~ 
                 log(O_Biz_count) + 
                 log(O_Finserv_count) +
@@ -753,7 +765,12 @@ uncSIM <- glm(formula = TOT_TRIPS ~
               family = poisson(link = "log"),
               data = flow_data,
               na.action = na.exclude)
-uncSIM
+write_rds(uncSIM, "data/rds/uncSIM.rds")
+```
+
+```{R}
+uncSIM <- read_rds("data/rds/uncSIM.rds")
+kable(tail(uncSIM$coefficients, n = 7))
 ```
 
 ##### Origin Constrained Spatial Interaction Models
@@ -765,6 +782,7 @@ The general formula of Unconstrained Spatial Interaction Model is:
 Using the glm() function, the results applying the abovementioned formula is obtained as follows.
 
 ```{R}
+#| eval: false
 orcSIM <- glm(formula = TOT_TRIPS ~ 
                  ORIGIN_GRID + 
                 log(D_FB_count) +
@@ -774,6 +792,13 @@ orcSIM <- glm(formula = TOT_TRIPS ~
               family = poisson(link = "log"),
               data = flow_data,
               na.action = na.exclude)
+write_rds(orcSIM, "data/rds/orcSIM.rds")
+```
+
+
+```{R}
+orcSIM <- read_rds("data/rds/orcSIM.rds")
+kable(tail(orcSIM$coefficients, n=4))
 ```
 
 ##### Destination Constrained Spatial Interaction Models
@@ -785,6 +810,7 @@ The general formula of Unconstrained Spatial Interaction Model is:
 Using the glm() function, the results applying the abovementioned formula is obtained as follows.
 
 ```{R}
+#| eval: false
 decSIM <- glm(formula = TOT_TRIPS ~ 
                 DESTIN_GRID + 
                 log(O_Biz_count) + 
@@ -794,6 +820,12 @@ decSIM <- glm(formula = TOT_TRIPS ~
               family = poisson(link = "log"),
               data = flow_data,
               na.action = na.exclude)
+write_rds(decSIM, "data/rds/decSIM.rds")
+```
+
+```{R}
+decSIM <- read_rds("data/rds/decSIM.rds")
+kable(tail(decSIM$coefficients, n=4))
 ```
 
 ##### Doubly Constrained Spatial Interaction Models
@@ -805,6 +837,7 @@ The general formula of Unconstrained Spatial Interaction Model is:
 Using the glm() function, the results applying the above-mentioned formula is obtained as follows.
 
 ```{R}
+#| eval: false
 dbcSIM <- glm(formula = TOT_TRIPS ~ 
                 ORIGIN_GRID + 
                 DESTIN_GRID +  
@@ -818,6 +851,12 @@ dbcSIM <- glm(formula = TOT_TRIPS ~
               family = poisson(link = "log"),
               data = flow_data,
               na.action = na.exclude)
+write_rds(dbcSIM, "data/rds/dbcSIM.rds")
+```
+
+```{R}
+dbcSIM <- read_rds("data/rds/dbcSIM.rds")
+kable(tail(dbcSIM$coefficients, n=1))
 ```
 
 ##### Model Comparison
@@ -866,38 +905,29 @@ data.frame(
 
 ### Geovisualisation and Graphical Plots of Spatial Interaction Models
 
-To plot the actual values against the predicted values for each of the 4 models, the fitted values from each model is first extracted as follows.
+To plot the actual values against the predicted values for each of the 4 models, the fitted values from each model is first extracted, and then appended and renamed in the earlier flow data set as follows.
 
 ```{R}
 df <- as.data.frame(uncSIM$fitted.values) %>%
   round(digits = 0)
-
-df <- as.data.frame(orcSIM$fitted.values) %>%
-  round(digits = 0)
-
-df <- as.data.frame(decSIM$fitted.values) %>%
-  round(digits = 0)
-
-df <- as.data.frame(dbcSIM$fitted.values) %>%
-  round(digits = 0)
-
-```
-
-The values are then appended and renamed in the earlier flow data set.
-
-```{R}
 flow_data <- flow_data %>%
   cbind(df) %>%
   rename(uncTRIPS = "uncSIM$fitted.values")
 
+df <- as.data.frame(orcSIM$fitted.values) %>%
+  round(digits = 0)
 flow_data <- flow_data %>%
   cbind(df) %>%
   rename(orcTRIPS = "orcSIM$fitted.values")
 
+df <- as.data.frame(decSIM$fitted.values) %>%
+  round(digits = 0)
 flow_data <- flow_data %>%
   cbind(df) %>%
   rename(decTRIPS = "decSIM$fitted.values")
 
+df <- as.data.frame(dbcSIM$fitted.values) %>%
+  round(digits = 0)
 flow_data <- flow_data %>%
   cbind(df) %>%
   rename(dbcTRIPS = "dbcSIM$fitted.values")
@@ -937,7 +967,13 @@ ggarrange(unc_p, orc_p, dec_p, dbc_p,
 
 ### Analysis of Spatial Interaction Modelling Results
 
-Based on the results comparing the four models, it can be observed that the doubly constrained model was the most accurate model in terms or RMSE and R-squared values.
+Based on the results comparing the four models, it can be observed that the doubly constrained model was the most accurate model in terms or RMSE and R-squared values, which is congruent with the graphical plot which shows that the data points are relatively closest to the best fit line. This is followed by the origin constrained and destination constrained, and lastly unconstrained. 
+
+Across the 3 models (excluding doubly constrained), the coefficient for financial service count reflected as consistently positive and having the highest magnitude, as a propulsive factor. Hence the results strongly suggest that the count of fincancial services within an area is a strong predictor for the start of a bus trip during the weekday evening peak. The other 2 propulsive variables tend to be less consistent, and may even fall to negative coefficients in some model(s).
+
+For Attractiveness variables, the strongest predictor was the count of residential HDB blocks, for which though smaller in magnitude the coefficient remained positive across the 3 models. The other 2 variables were not too far off but fell negative in some model(s) as well.
+
+The analysis done in this exercise seems to suggests that there could be other factors that propels or attracts commuters taking bus trips, or perhaps the patterns may not be well-described in the 4 models utilised, and hence more data collection and verification, as well as a wider variety of models can be employed to improve the prediction of O-D flows on public buses during Weekday Evening Peak hour.
 
 
 
